@@ -115,6 +115,11 @@ class Searcher
 public:
 	Searcher()
 	{
+		Clear();
+	}
+
+	void Clear()
+	{
 		_matcher = DescriptorMatcher::create(DescriptorMatcher::FLANNBASED);
 	}
 
@@ -157,7 +162,8 @@ private:
 class Trainer
 {
 public:
-	Trainer(const char* basePath) : _basePath(basePath)
+	Trainer(const char* basePath)
+		: _basePath(basePath)
 	{
 	}
 
@@ -171,26 +177,40 @@ public:
 		return result;
 	}
 
-	bool Train(const char* imgUrl, const char* symbol)
+	bool Train(const char* imgUrl, const char* symbol, bool forceReTraining)
 	{
+		std::stringstream outPath;
+		outPath << _basePath << "train\\" << symbol << ".bin";
+
+		// if file already exists, bail
+		if (!forceReTraining && fileExists(outPath.str().c_str()))
+			return true;
+
 		Mat image = curlImg(imgUrl);
 
-		return TrainInternal(image, symbol);
+		return TrainInternal(image, symbol, forceReTraining);
 	}
 
-	bool TrainFile(const char* imgPath, const char* symbol)
+	bool TrainFile(const char* imgPath, const char* symbol, bool forceReTraining)
 	{
 		std::stringstream outPath;
 		outPath << _basePath << imgPath;
 
 		Mat image = imread(outPath.str());
 
-		return TrainInternal(image, symbol);
+		return TrainInternal(image, symbol, forceReTraining);
 	}
 
 private:
-	bool TrainInternal(Mat image, const char* symbol)
+	bool TrainInternal(Mat image, const char* symbol, bool forceReTraining)
 	{
+		std::stringstream outPath;
+		outPath << _basePath << "train\\" << symbol << ".bin";
+
+		// if file already exists, bail
+		if (!forceReTraining && fileExists(outPath.str().c_str()))
+			return true;
+
 		if (image.empty())
 			return false;
 
@@ -200,9 +220,6 @@ private:
 		auto features = _descriptor.Describe(image);
 
 		if (features.cols > 0 && features.rows > 0) {
-			std::stringstream outPath;
-			outPath << _basePath << "train\\" << symbol << ".bin";
-
 			matwrite(outPath.str(), features);
 		}
 
@@ -268,110 +285,150 @@ struct SearchResults
 	int closebuttons;
 };
 
-SearchResults analyzeBehold(Searcher& searcher, const char* url)
+class BeholdHelper
 {
-	Mat _starFull = cv::imread(".\\data\\starfull.png");
-	Mat _closeButton = cv::imread(".\\data\\closeButton.png");
-
-	SearchResults results;
-
-	Mat query = curlImg(url);
-	imwrite("temp.png", query);
-
-	results.input_height = query.rows;
-	results.input_width = query.cols;
-
-	Mat top = SubMat(query, 0, std::min(query.rows / 13, 80), query.cols / 3, query.cols * 2 / 3);
-	if (top.empty())
+public:
+	BeholdHelper(const char* basePath)
+		: _basePath(basePath), _trainer(basePath)
 	{
-		results.error = "Top row was empty";
+	}
+
+	void TEMP()
+	{
+		_searcher.Clear();
+
+		_trainer.TrainFile("data\\behold_title.png", "behold_title", false);
+
+		Mat tr = _trainer.Read("behold_title");
+		_searcher.Add(tr, "behold_title");
+	}
+
+	bool ReInitialize(bool forceReTraining)
+	{
+		_starFull = cv::imread(_basePath + "data\\starfull.png");
+		_closeButton = cv::imread(_basePath + "data\\closeButton.png");
+
+		_searcher.Clear();
+
+		if (!_trainer.TrainFile("data\\behold_title.png", "behold_title", forceReTraining))
+			return false;
+
+		Mat tr = _trainer.Read("behold_title");
+		_searcher.Add(tr, "behold_title");
+
+		boost::property_tree::ptree jsontree;
+		boost::property_tree::read_json("..\\..\\..\\data\\assets.json", jsontree);
+
+		for (const boost::property_tree::ptree::value_type& asset : jsontree.get_child("assets"))
+		{
+			const std::string& symbol = asset.first;
+			const std::string& url = asset.second.data();
+
+			//std::cout << "Reading " << symbol << "..." << std::endl;
+
+			if (!_trainer.Train(url.c_str(), symbol.c_str(), forceReTraining))
+				return false;
+
+			Mat tr = _trainer.Read(symbol.c_str());
+			_searcher.Add(tr, symbol.c_str());
+		}
+	}
+
+	SearchResults analyzeBehold(const char* url)
+	{
+		SearchResults results;
+
+		Mat query = curlImg(url);
+		//imwrite("temp.png", query);
+
+		results.input_height = query.rows;
+		results.input_width = query.cols;
+
+		Mat top = SubMat(query, 0, std::min(query.rows / 13, 80), query.cols / 3, query.cols * 2 / 3);
+		if (top.empty())
+		{
+			results.error = "Top row was empty";
+			return results;
+		}
+
+		results.top = _searcher.Match(top);
+
+		if (results.top.symbol != "behold_title")
+		{
+			results.error = "Top row doesn't look like a behold title"; //ignorable if other heuristics are high
+		}
+
+		// split in 3, search for each separately
+		Mat crew1 = SubMat(query, query.rows * 2 / 8, (int)(query.rows * 4.5 / 8), 30, query.cols / 3);
+		Mat crew2 = SubMat(query, query.rows * 2 / 8, (int)(query.rows * 4.5 / 8), query.cols * 1 / 3 + 30, query.cols * 2 / 3);
+		Mat crew3 = SubMat(query, query.rows * 2 / 8, (int)(query.rows * 4.5 / 8), query.cols * 2 / 3 + 30, query.cols - 30);
+
+		results.crew1 = _searcher.Match(crew1);
+		results.crew2 = _searcher.Match(crew2);
+		results.crew3 = _searcher.Match(crew3);
+
+		//imwrite("temp.png", crew1);
+
+		// TODO: only do this part if valid (to not waste time)
+		results.crew1.starcount = 0;
+		results.crew2.starcount = 0;
+		results.crew3.starcount = 0;
+		int closebuttons = 0;
+		if ((results.crew1.score > 0) && (results.crew2.score > 0) && (results.crew3.score > 0))
+		{
+			int starScale = 72;
+			float scale = (float)query.cols / 100;
+			Mat stars1 = SubMat(query, (int)(scale * 9.2), (int)(scale * 12.8), 30, query.cols / 3);
+			Mat stars2 = SubMat(query, (int)(scale * 9.2), (int)(scale * 12.8), query.cols * 1 / 3 + 30, query.cols * 2 / 3);
+			Mat stars3 = SubMat(query, (int)(scale * 9.2), (int)(scale * 12.8), query.cols * 2 / 3 + 30, query.cols - 30);
+
+			cv::resize(stars1, stars1, Size(stars1.cols * starScale / stars1.rows, starScale), 0, 0, cv::INTER_AREA);
+			cv::resize(stars2, stars2, Size(stars2.cols * starScale / stars2.rows, starScale), 0, 0, cv::INTER_AREA);
+			cv::resize(stars3, stars3, Size(stars3.cols * starScale / stars3.rows, starScale), 0, 0, cv::INTER_AREA);
+
+			results.crew1.starcount = CountFullStars(stars1, _starFull);
+			results.crew2.starcount = CountFullStars(stars2, _starFull);
+			results.crew3.starcount = CountFullStars(stars3, _starFull);
+
+			// If there's a close button, this isn't a behold
+			int upperRightCorner = (int)(std::min(query.rows, query.cols) * 0.11);
+			Mat corner = SubMat(query, 0, upperRightCorner, query.cols - upperRightCorner, query.cols);
+			cv::resize(corner, corner, Size(78, 78), 0, 0, cv::INTER_AREA);
+			results.closebuttons = CountFullStars(corner, _closeButton, 0.7);
+
+			// TODO: If it kind-of looks like a behold (we get 2 valid crew out of 3), special-case the "hidden / crouching" characters by looking at their names
+			Mat name1 = SubMat(query, (int)(scale * 5.8), (int)(scale * 9.1), 30, query.cols / 3);
+			Mat name2 = SubMat(query, (int)(scale * 5.8), (int)(scale * 9.1), query.cols * 1 / 3 + 30, query.cols * 2 / 3);
+			Mat name3 = SubMat(query, (int)(scale * 5.8), (int)(scale * 9.1), query.cols * 2 / 3 + 30, query.cols - 30);
+			//cv::imwrite("name1.png", name1);
+
+			// TODO: OCR
+		}
+
 		return results;
 	}
 
-	results.top = searcher.Match(top);
+private:
+	Trainer _trainer;
+	Searcher _searcher;
 
-	if (results.top.symbol != "behold_title")
-	{
-		results.error = "Top row doesn't look like a behold title"; //ignorable if other heuristics are high
-	}
+	Mat _starFull;
+	Mat _closeButton;
 
-	// split in 3, search for each separately
-	Mat crew1 = SubMat(query, query.rows * 2 / 8, (int)(query.rows * 4.5 / 8), 30, query.cols / 3);
-	Mat crew2 = SubMat(query, query.rows * 2 / 8, (int)(query.rows * 4.5 / 8), query.cols * 1 / 3 + 30, query.cols * 2 / 3);
-	Mat crew3 = SubMat(query, query.rows * 2 / 8, (int)(query.rows * 4.5 / 8), query.cols * 2 / 3 + 30, query.cols - 30);
-
-	results.crew1 = searcher.Match(crew1);
-	results.crew2 = searcher.Match(crew2);
-	results.crew3 = searcher.Match(crew3);
-
-	//imwrite("temp.png", crew1);
-
-	// TODO: only do this part if valid (to not waste time)
-	results.crew1.starcount = 0;
-	results.crew2.starcount = 0;
-	results.crew3.starcount = 0;
-	int closebuttons = 0;
-	if ((results.crew1.score > 0) && (results.crew2.score > 0) && (results.crew3.score > 0))
-	{
-		int starScale = 72;
-		float scale = (float)query.cols / 100;
-		Mat stars1 = SubMat(query, (int)(scale * 9.2), (int)(scale * 12.8), 30, query.cols / 3);
-		Mat stars2 = SubMat(query, (int)(scale * 9.2), (int)(scale * 12.8), query.cols * 1 / 3 + 30, query.cols * 2 / 3);
-		Mat stars3 = SubMat(query, (int)(scale * 9.2), (int)(scale * 12.8), query.cols * 2 / 3 + 30, query.cols - 30);
-
-		cv::resize(stars1, stars1, Size(stars1.cols * starScale / stars1.rows, starScale), 0, 0, cv::INTER_AREA);
-		cv::resize(stars2, stars2, Size(stars2.cols * starScale / stars2.rows, starScale), 0, 0, cv::INTER_AREA);
-		cv::resize(stars3, stars3, Size(stars3.cols * starScale / stars3.rows, starScale), 0, 0, cv::INTER_AREA);
-
-		//cv::imwrite("stars1.png", stars1);
-
-		results.crew1.starcount = CountFullStars(stars1, _starFull);
-		results.crew2.starcount = CountFullStars(stars2, _starFull);
-		results.crew3.starcount = CountFullStars(stars3, _starFull);
-
-		// If there's a close button, this isn't a behold
-		int upperRightCorner = (int)(std::min(query.rows, query.cols) * 0.11);
-		Mat corner = SubMat(query, 0, upperRightCorner, query.cols - upperRightCorner, query.cols);
-		cv::resize(corner, corner, Size(78, 78), 0, 0, cv::INTER_AREA);
-		results.closebuttons = CountFullStars(corner, _closeButton, 0.7);
-	}
-
-	return results;
-}
+	std::string _basePath;
+};
 
 int main(void)
 {
 	// Blocking
 	//start_server();
 
-	Trainer trainer(".\\");
+	BeholdHelper beholdHelper("..\\..\\..\\");
 
-	trainer.TrainFile("data\\behold_title.png", "behold_title");
+	beholdHelper.ReInitialize(false);
+	//beholdHelper.TEMP();
 
-	Searcher searcher;
-
-	Mat tr = trainer.Read("behold_title");
-	searcher.Add(tr, "behold_title");
-
-	boost::property_tree::ptree jsontree;
-	boost::property_tree::read_json(".\\data\\assets.json", jsontree);
-
-	for (const boost::property_tree::ptree::value_type& asset : jsontree.get_child("assets"))
-	{
-		const std::string& symbol = asset.first;
-		const std::string& url = asset.second.data();
-
-		std::cout << "Parsing " << symbol << "..." << std::endl;
-
-		// TODO: only Train if file isn't already present or if "force training"
-		if (!trainer.Train(url.c_str(), symbol.c_str()))
-			return -1;
-
-		Mat tr = trainer.Read(symbol.c_str());
-		searcher.Add(tr, symbol.c_str());
-	}
-
-	SearchResults results = analyzeBehold(searcher, "https://cdn.discordapp.com/attachments/728926906350567425/730168187332853832/Screenshot_2020-07-07-12-39-55.png");
+	SearchResults results = beholdHelper.analyzeBehold("https://cdn.discordapp.com/attachments/728926906350567425/730168187332853832/Screenshot_2020-07-07-12-39-55.png");
 
 	return 0;
 }
