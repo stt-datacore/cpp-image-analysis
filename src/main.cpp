@@ -108,6 +108,16 @@ struct MatchResult
 	std::string symbol;
 	int score;
 	uint8_t starcount;
+
+	boost::property_tree::ptree toJson()
+	{
+		boost::property_tree::ptree pt;
+		pt.put("symbol", symbol);
+		pt.put("score", score);
+		pt.put("starcount", starcount);
+
+		return pt;
+	}
 };
 
 class Searcher
@@ -283,6 +293,21 @@ struct SearchResults
 	MatchResult crew3;
 	std::string error;
 	int closebuttons;
+
+	boost::property_tree::ptree toJson()
+	{
+		boost::property_tree::ptree pt;
+		pt.put("input_width", input_width);
+		pt.put("input_height", input_height);
+		pt.put_child("top", top.toJson());
+		pt.put_child("crew1", crew1.toJson());
+		pt.put_child("crew2", crew2.toJson());
+		pt.put_child("crew3", crew3.toJson());
+		pt.put("error", error);
+		pt.put("closebuttons", closebuttons);
+
+		return pt;
+	}
 };
 
 class BeholdHelper
@@ -332,6 +357,8 @@ public:
 			Mat tr = _trainer.Read(symbol.c_str());
 			_searcher.Add(tr, symbol.c_str());
 		}
+
+		return true;
 	}
 
 	SearchResults analyzeBehold(const char* url)
@@ -420,15 +447,53 @@ private:
 
 int main(void)
 {
-	// Blocking
-	//start_server();
-
 	BeholdHelper beholdHelper("..\\..\\..\\");
 
+	// Load all matrices from disk
 	beholdHelper.ReInitialize(false);
-	//beholdHelper.TEMP();
 
-	SearchResults results = beholdHelper.analyzeBehold("https://cdn.discordapp.com/attachments/728926906350567425/730168187332853832/Screenshot_2020-07-07-12-39-55.png");
+	// Blocking
+	start_server([&](std::string&& message) -> std::string {
+		std::cout << "Message received: " << message << std::endl;
+
+		// TODO: there's probably a better / smarter way to implement a protocol handler
+		std::string reply;
+
+		if (message.find("REINIT") == 0) {
+			// Reinitialize by reloading assets.json from the configured path
+			beholdHelper.ReInitialize(false);
+			reply = "{\"success:\":true}";
+		}
+		else if (message.find("FORCEREINIT") == 0) {
+			// Force reinitialize by re-downloading and re-parsing all assets
+			beholdHelper.ReInitialize(true);
+			reply = "{\"success:\":true}";
+		}
+		else if (message.find("BEHOLD") == 0) {
+			// Run the behold analyzer
+			std::string beholdUrl = message.substr(6);
+
+			SearchResults results = beholdHelper.analyzeBehold(beholdUrl.c_str());
+
+			std::uint32_t size{ 0 }; // TODO: for analytics, include downloaded size
+
+			boost::property_tree::ptree pt;
+			pt.put("beholdUrl", beholdUrl);
+			pt.put("size", size);
+			pt.put_child("results", results.toJson());
+			pt.put("success", true);
+
+			std::stringstream ss;
+			boost::property_tree::json_parser::write_json(ss, pt);
+
+			reply = ss.str();
+		}
+		else {
+			// unknown message
+			reply = "{\"success:\":false}";
+		}
+		return reply;
+	});
 
 	return 0;
 }

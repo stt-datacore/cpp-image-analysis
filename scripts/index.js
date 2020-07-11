@@ -22,8 +22,7 @@ client.on('connect', function(connection) {
     
     function sendReinit() {
         if (connection.connected) {
-            
-            connection.sendUTF("REINIT");
+            connection.sendUTF("BEHOLDhttps://cdn.discordapp.com/attachments/249321466481475585/731313240818188368/Star_Trek_2020-07-10-18-56-27.jpg");
         }
     }
     sendReinit();

@@ -15,10 +15,7 @@ namespace websocket = beast::websocket; // from <boost/beast/websocket.hpp>
 namespace net = boost::asio;            // from <boost/asio.hpp>
 using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
 
-//------------------------------------------------------------------------------
-
-// Echoes back all received WebSocket messages
-void do_session(tcp::socket& socket)
+void do_session(std::function<std::string(std::string&&)> lambda, tcp::socket& socket)
 {
 	try
 	{
@@ -46,12 +43,7 @@ void do_session(tcp::socket& socket)
 			ws.text(ws.got_text());
 
 			std::string message = beast::buffers_to_string(buffer.data());
-
-			std::cout << "Message received: " << message << std::endl;
-
-			// TODO: process message
-
-			std::string reply = "OK";
+			std::string reply = lambda(std::move(message));
 
 			ws.write(net::buffer(reply));
 		}
@@ -68,7 +60,7 @@ void do_session(tcp::socket& socket)
 	}
 }
 
-bool start_server(const char* addr, unsigned short port) noexcept
+bool start_server(std::function<std::string(std::string&&)> lambda, const char* addr, unsigned short port) noexcept
 {
 	try
 	{
@@ -90,6 +82,7 @@ bool start_server(const char* addr, unsigned short port) noexcept
 			// Launch the session, transferring ownership of the socket
 			std::thread{ std::bind(
 				&do_session,
+				lambda,
 				std::move(socket)) }.detach();
 		}
 
