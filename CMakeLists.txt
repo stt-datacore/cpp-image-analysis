@@ -11,12 +11,13 @@ if(WIN32)
 endif()
 
 find_package(OpenCV CONFIG REQUIRED)
+find_package(Tesseract CONFIG REQUIRED)
 find_package(Boost COMPONENTS system REQUIRED)
 find_package(OpenSSL REQUIRED)
 
-add_executable(imserver src/main.cpp src/networkhelper.cpp src/wsserver.cpp)
+add_executable(imserver src/main.cpp src/networkhelper.cpp src/wsserver.cpp src/beholdhelper.cpp "src/voyimage.h" "src/voyimage.cpp")
 
-target_link_libraries(imserver PRIVATE opencv_core opencv_imgcodecs opencv_xfeatures2d Boost::system OpenSSL::SSL OpenSSL::Crypto)
+target_link_libraries(imserver PRIVATE opencv_core opencv_imgcodecs opencv_xfeatures2d Boost::system OpenSSL::SSL OpenSSL::Crypto libtesseract)
 target_compile_options(imserver PRIVATE "/EHsc")
 
 if(WIN32)
