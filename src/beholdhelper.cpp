@@ -5,7 +5,7 @@
 #include <map>
 
 #include <opencv2/opencv.hpp>
-#include <opencv2/xfeatures2d.hpp>
+#include "opencv_surf/surf.h"
 
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -14,7 +14,7 @@
 #include "networkhelper.h"
 
 using namespace cv;
-using namespace cv::xfeatures2d;
+using namespace cv::xxfeatures2d;
 
 //function to retrieve the image as cv::Mat data type
 Mat curlImg(const char* img_url)
@@ -86,7 +86,7 @@ class Descriptor
 public:
 	Descriptor()
 	{
-		_detector = SURF::create(1200);
+		_detector = SURF::create(1200, 4 /*nOctaves*/, 3 /*nOctaveLayers*/, false /*extended*/, true /*upright*/);
 	}
 
 	Mat Describe(InputArray image)
