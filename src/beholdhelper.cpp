@@ -176,7 +176,7 @@ public:
 	Mat Read(const char* symbol)
 	{
 		std::stringstream outPath;
-		outPath << _basePath << "train\\" << symbol << ".bin";
+		outPath << _basePath << "train/" << symbol << ".bin";
 
 		Mat result = matread(fs::path(outPath.str()).make_preferred().string());
 
@@ -186,7 +186,7 @@ public:
 	bool Train(const char* imgUrl, const char* symbol, bool forceReTraining)
 	{
 		std::stringstream outPath;
-		outPath << _basePath << "train\\" << symbol << ".bin";
+		outPath << _basePath << "train/" << symbol << ".bin";
 
 		// if file already exists, bail
 		if (!forceReTraining && fileExists(fs::path(outPath.str()).make_preferred().string()))
@@ -211,7 +211,7 @@ private:
 	bool TrainInternal(Mat image, const char* symbol, bool forceReTraining)
 	{
 		std::stringstream outPath;
-		outPath << _basePath << "train\\" << symbol << ".bin";
+		outPath << _basePath << "train/" << symbol << ".bin";
 
 		// if file already exists, bail
 		if (!forceReTraining && fileExists(fs::path(outPath.str()).make_preferred().string()))
@@ -319,19 +319,19 @@ private:
 
 bool BeholdHelper::ReInitialize(bool forceReTraining)
 {
-	_starFull = cv::imread(fs::path(_basePath + "data\\starfull.png").make_preferred().string());
-	_closeButton = cv::imread(fs::path(_basePath + "data\\closeButton.png").make_preferred().string());
+	_starFull = cv::imread(fs::path(_basePath + "data/starfull.png").make_preferred().string());
+	_closeButton = cv::imread(fs::path(_basePath + "data/closeButton.png").make_preferred().string());
 
 	_searcher.Clear();
 
-	if (!_trainer.TrainFile("data\\behold_title.png", "behold_title", forceReTraining))
+	if (!_trainer.TrainFile("data/behold_title.png", "behold_title", forceReTraining))
 		return false;
 
 	Mat tr = _trainer.Read("behold_title");
 	_searcher.Add(tr, "behold_title");
 
 	boost::property_tree::ptree jsontree;
-	boost::property_tree::read_json(fs::path(_basePath + "data\\assets.json").make_preferred().string(), jsontree);
+	boost::property_tree::read_json(fs::path(_basePath + "data/assets.json").make_preferred().string(), jsontree);
 
 	for (const boost::property_tree::ptree::value_type& asset : jsontree.get_child("assets"))
 	{
@@ -430,7 +430,7 @@ SearchResults BeholdHelper::AnalyzeBehold(const char* url)
 	return results;
 }
 
-std::shared_ptr<IBeholdHelper> MakeBeholdHelper(const char* basePath)
+std::shared_ptr<IBeholdHelper> MakeBeholdHelper(const std::string& basePath)
 {
-	return std::make_shared<BeholdHelper>(basePath);
+	return std::make_shared<BeholdHelper>(basePath.c_str());
 }

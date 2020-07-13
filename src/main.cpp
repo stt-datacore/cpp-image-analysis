@@ -7,9 +7,14 @@
 #include "beholdhelper.h"
 #include "voyimage.h"
 
-int main(void)
+int main(int argc, char** argv)
 {
-	std::shared_ptr<IBeholdHelper> beholdHelper = MakeBeholdHelper("..\\..\\..\\");
+	std::string basePath{ "../../../" };
+	if (argc > 1) {
+		basePath = argv[1];
+	}
+
+	std::shared_ptr<IBeholdHelper> beholdHelper = MakeBeholdHelper(basePath);
 
 	// Load all matrices from disk
 	beholdHelper->ReInitialize(false);

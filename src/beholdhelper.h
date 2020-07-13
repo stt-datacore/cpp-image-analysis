@@ -30,4 +30,4 @@ struct IBeholdHelper /* : std::enable_shared_from_this<IBeholdHelper>*/
 	virtual SearchResults AnalyzeBehold(const char* url) = 0;
 };
 
-std::shared_ptr<IBeholdHelper> MakeBeholdHelper(const char* basePath);
+std::shared_ptr<IBeholdHelper> MakeBeholdHelper(const std::string& basePath);

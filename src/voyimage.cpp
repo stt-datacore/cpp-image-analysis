@@ -57,17 +57,17 @@ VoyImageScanner::~VoyImageScanner()
 
 bool VoyImageScanner::ReInitialize(bool forceReTraining)
 {
-	_skill_cmd = cv::imread(fs::path(_basePath + "data\\cmd.png").make_preferred().string());
-	_skill_dip = cv::imread(fs::path(_basePath + "data\\dip.png").make_preferred().string());
-	_skill_eng = cv::imread(fs::path(_basePath + "data\\eng.png").make_preferred().string());
-	_skill_med = cv::imread(fs::path(_basePath + "data\\med.png").make_preferred().string());
-	_skill_sci = cv::imread(fs::path(_basePath + "data\\sci.png").make_preferred().string());
-	_skill_sec = cv::imread(fs::path(_basePath + "data\\sec.png").make_preferred().string());
-	_antimatter = cv::imread(fs::path(_basePath + "data\\antimatter.png").make_preferred().string());
+	_skill_cmd = cv::imread(fs::path(_basePath + "data/cmd.png").make_preferred().string());
+	_skill_dip = cv::imread(fs::path(_basePath + "data/dip.png").make_preferred().string());
+	_skill_eng = cv::imread(fs::path(_basePath + "data/eng.png").make_preferred().string());
+	_skill_med = cv::imread(fs::path(_basePath + "data/med.png").make_preferred().string());
+	_skill_sci = cv::imread(fs::path(_basePath + "data/sci.png").make_preferred().string());
+	_skill_sec = cv::imread(fs::path(_basePath + "data/sec.png").make_preferred().string());
+	_antimatter = cv::imread(fs::path(_basePath + "data/antimatter.png").make_preferred().string());
 
 	_tesseract = std::make_shared<tesseract::TessBaseAPI>();
 
-	if (_tesseract->Init(fs::path(_basePath + "data\\tessdata").make_preferred().string().c_str(), "Eurostile")) {
+	if (_tesseract->Init(fs::path(_basePath + "data/tessdata").make_preferred().string().c_str(), "Eurostile")) {
 		// "Could not initialize tesseract"
 		return false;
 	}
