@@ -31,12 +31,12 @@ find_package(OpenSSL REQUIRED)
 
 add_executable(imserver src/main.cpp src/networkhelper.cpp src/wsserver.cpp src/beholdhelper.cpp src/voyimage.cpp src/opencv_surf/surf.cpp)
 
-target_link_libraries(imserver PRIVATE opencv_core opencv_imgcodecs opencv_xfeatures2d Boost::system OpenSSL::SSL OpenSSL::Crypto)
+target_link_libraries(imserver PRIVATE opencv_core opencv_imgcodecs opencv_features2d Boost::system OpenSSL::SSL OpenSSL::Crypto)
 
 if(WIN32)
 	target_link_libraries(imserver PRIVATE libtesseract)
 	target_compile_options(imserver PRIVATE "/EHsc")
 	target_compile_definitions(imserver PRIVATE _WIN32_WINNT=0x0601)
 else()
-	target_link_libraries(imserver PRIVATE ${TESSERACT_LIBRARIES} ${LEPTONICA_LIBRARIES})
+	target_link_libraries(imserver PRIVATE pthread ${TESSERACT_LIBRARIES} ${LEPTONICA_LIBRARIES})
 endif()

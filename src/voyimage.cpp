@@ -5,7 +5,6 @@
 #include <map>
 
 #include <opencv2/opencv.hpp>
-#include <opencv2/xfeatures2d.hpp>
 
 #include <tesseract/baseapi.h>
 #include <leptonica/allheaders.h>
@@ -17,7 +16,6 @@
 #include "voyimage.h"
 
 using namespace cv;
-using namespace cv::xfeatures2d;
 
 class VoyImageScanner : IVoyImageScanner
 {
