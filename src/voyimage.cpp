@@ -1,43 +1,44 @@
 #include <algorithm>
+#include <filesystem>
 #include <iostream>
+#include <map>
 #include <sstream>
 #include <vector>
-#include <filesystem>
-#include <map>
 
 #include <opencv2/opencv.hpp>
 
-#include <tesseract/baseapi.h>
 #include <leptonica/allheaders.h>
+#include <tesseract/baseapi.h>
 
-#include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
 
 #include "networkhelper.h"
-#include "voyimage.h"
 #include "utils.h"
+#include "voyimage.h"
 
 namespace fs = std::filesystem;
 using namespace cv;
 
+namespace DataCore {
+
 class VoyImageScanner : public IVoyImageScanner
 {
-public:
-	VoyImageScanner(const char* basePath)
-		: _basePath(basePath)
+  public:
+	VoyImageScanner(const char *basePath) : _basePath(basePath)
 	{
 	}
 
 	~VoyImageScanner();
 
 	bool ReInitialize(bool forceReTraining) override;
-	VoySearchResults AnalyzeVoyImage(const char* url) override;
+	VoySearchResults AnalyzeVoyImage(const char *url) override;
 
-private:
+  private:
 	int MatchTop(Mat top);
-	bool MatchBottom(Mat bottom, VoySearchResults* result);
-	int OCRNumber(Mat skillValue, const std::string& name = "");
-	int HasStar(Mat skillImg, const std::string& skillName = "");
+	bool MatchBottom(Mat bottom, VoySearchResults *result);
+	int OCRNumber(Mat skillValue, const std::string &name = "");
+	int HasStar(Mat skillImg, const std::string &skillName = "");
 
 	NetworkHelper _networkHelper;
 	std::shared_ptr<tesseract::TessBaseAPI> _tesseract;
@@ -114,7 +115,7 @@ bool VoyImageScanner::ReInitialize(bool forceReTraining)
 	return true;
 }
 
-double ScaleInvariantTemplateMatch(Mat refMat, Mat tplMat, Point* maxloc, double threshold = 0.8)
+double ScaleInvariantTemplateMatch(Mat refMat, Mat tplMat, Point *maxloc, double threshold = 0.8)
 {
 	Mat res(refMat.rows - tplMat.rows + 1, refMat.cols - tplMat.cols + 1, CV_32FC1);
 
@@ -131,43 +132,37 @@ double ScaleInvariantTemplateMatch(Mat refMat, Mat tplMat, Point* maxloc, double
 	return maxval;
 }
 
-int VoyImageScanner::OCRNumber(Mat skillValue, const std::string& name)
+int VoyImageScanner::OCRNumber(Mat skillValue, const std::string &name)
 {
-	_tesseract->SetImage((uchar*)skillValue.data, skillValue.size().width, skillValue.size().height, skillValue.channels(), skillValue.step1());
+	_tesseract->SetImage((uchar *)skillValue.data, skillValue.size().width, skillValue.size().height, skillValue.channels(),
+						 skillValue.step1());
 	_tesseract->Recognize(0);
-	const char* out = _tesseract->GetUTF8Text();
+	const char *out = _tesseract->GetUTF8Text();
 
-	//std::cout << "For " << name << "OCR got " << out << std::endl;
+	// std::cout << "For " << name << "OCR got " << out << std::endl;
 
 	return std::atoi(out);
 }
 
-int VoyImageScanner::HasStar(Mat skillImg, const std::string& skillName)
+int VoyImageScanner::HasStar(Mat skillImg, const std::string &skillName)
 {
 	Mat center = SubMat(skillImg, (skillImg.rows / 2) - 10, (skillImg.rows / 2) + 10, (skillImg.cols / 2) - 10, (skillImg.cols / 2) + 10);
 
 	auto mean = cv::mean(center);
 
-	if (mean.val[0] + mean.val[1] + mean.val[2] < 10)
-	{
+	if (mean.val[0] + mean.val[1] + mean.val[2] < 10) {
 		return 0;
-	}
-	else if (mean.val[0] < 5)
-	{
+	} else if (mean.val[0] < 5) {
 		return 1; // Primary
-	}
-	else if (mean.val[0] + mean.val[1] + mean.val[2] > 100)
-	{
+	} else if (mean.val[0] + mean.val[1] + mean.val[2] > 100) {
 		return 2; // Secondary
-	}
-	else
-	{
+	} else {
 		// not sure... hmmm
 		return -1;
 	}
 }
 
-bool VoyImageScanner::MatchBottom(Mat bottom, VoySearchResults* result)
+bool VoyImageScanner::MatchBottom(Mat bottom, VoySearchResults *result)
 {
 	int minHeight = bottom.rows * 3 / 15;
 	int maxHeight = bottom.rows * 5 / 15;
@@ -177,8 +172,7 @@ bool VoyImageScanner::MatchBottom(Mat bottom, VoySearchResults* result)
 	Point maxlocSci;
 	int scaledWidth = 0;
 	int height = minHeight;
-	for (; height <= maxHeight; height += stepHeight)
-	{
+	for (; height <= maxHeight; height += stepHeight) {
 		Mat scaledCmd;
 		cv::resize(_skill_cmd, scaledCmd, Size(_skill_cmd.cols * height / _skill_cmd.rows, height), 0, 0, cv::INTER_AREA);
 		Mat scaledSci;
@@ -187,37 +181,49 @@ bool VoyImageScanner::MatchBottom(Mat bottom, VoySearchResults* result)
 		double maxvalCmd = ScaleInvariantTemplateMatch(bottom, scaledCmd, &maxlocCmd);
 		double maxvalSci = ScaleInvariantTemplateMatch(bottom, scaledSci, &maxlocSci);
 
-		if ((maxvalCmd > 0.9) && (maxvalSci > 0.9))
-		{
+		if ((maxvalCmd > 0.9) && (maxvalSci > 0.9)) {
 			scaledWidth = scaledSci.cols;
 			break;
 		}
 	}
 
-	if (scaledWidth == 0)
-	{
+	if (scaledWidth == 0) {
 		return false;
 	}
 
 	double widthScale = (double)scaledWidth / _skill_sci.cols;
 
-	result->cmd.skillValue = OCRNumber(SubMat(bottom, maxlocCmd.y, maxlocCmd.y + height, maxlocCmd.x - (scaledWidth * 5), maxlocCmd.x - (scaledWidth / 8)), "cmd");
-	result->cmd.primary = HasStar(SubMat(bottom, maxlocCmd.y, maxlocCmd.y + height, maxlocCmd.x + (scaledWidth * 9 / 8), maxlocCmd.x + (scaledWidth * 5 / 2)), "cmd");
+	result->cmd.skillValue = OCRNumber(
+		SubMat(bottom, maxlocCmd.y, maxlocCmd.y + height, maxlocCmd.x - (scaledWidth * 5), maxlocCmd.x - (scaledWidth / 8)), "cmd");
+	result->cmd.primary = HasStar(
+		SubMat(bottom, maxlocCmd.y, maxlocCmd.y + height, maxlocCmd.x + (scaledWidth * 9 / 8), maxlocCmd.x + (scaledWidth * 5 / 2)), "cmd");
 
-	result->dip.skillValue = OCRNumber(SubMat(bottom, maxlocCmd.y + height, maxlocSci.y, maxlocCmd.x - (scaledWidth * 5), (int)(maxlocCmd.x - (_skill_dip.cols - _skill_sci.cols) * widthScale)), "dip");
-	result->dip.primary = HasStar(SubMat(bottom, maxlocCmd.y + height, maxlocSci.y, maxlocCmd.x + (scaledWidth * 9 / 8), maxlocCmd.x + (scaledWidth * 5 / 2)), "dip");
+	result->dip.skillValue = OCRNumber(SubMat(bottom, maxlocCmd.y + height, maxlocSci.y, maxlocCmd.x - (scaledWidth * 5),
+											  (int)(maxlocCmd.x - (_skill_dip.cols - _skill_sci.cols) * widthScale)),
+									   "dip");
+	result->dip.primary = HasStar(
+		SubMat(bottom, maxlocCmd.y + height, maxlocSci.y, maxlocCmd.x + (scaledWidth * 9 / 8), maxlocCmd.x + (scaledWidth * 5 / 2)), "dip");
 
-	result->eng.skillValue = OCRNumber(SubMat(bottom, maxlocSci.y, maxlocSci.y + height, maxlocCmd.x - (scaledWidth * 5), (int)(maxlocCmd.x - (_skill_eng.cols - _skill_sci.cols) * widthScale)), "eng");
-	result->eng.primary = HasStar(SubMat(bottom, maxlocSci.y, maxlocSci.y + height, maxlocCmd.x + (scaledWidth * 9 / 8), maxlocCmd.x + (scaledWidth * 5 / 2)), "eng");
+	result->eng.skillValue = OCRNumber(SubMat(bottom, maxlocSci.y, maxlocSci.y + height, maxlocCmd.x - (scaledWidth * 5),
+											  (int)(maxlocCmd.x - (_skill_eng.cols - _skill_sci.cols) * widthScale)),
+									   "eng");
+	result->eng.primary = HasStar(
+		SubMat(bottom, maxlocSci.y, maxlocSci.y + height, maxlocCmd.x + (scaledWidth * 9 / 8), maxlocCmd.x + (scaledWidth * 5 / 2)), "eng");
 
-	result->sec.skillValue = OCRNumber(SubMat(bottom, maxlocCmd.y, maxlocCmd.y + height, (int)(maxlocSci.x + scaledWidth * 1.4), maxlocSci.x + (scaledWidth * 6)), "sec");
-	result->sec.primary = HasStar(SubMat(bottom, maxlocCmd.y, maxlocCmd.y + height, maxlocSci.x - (scaledWidth * 12 / 8), maxlocSci.x - (scaledWidth / 6)), "sec");
+	result->sec.skillValue = OCRNumber(
+		SubMat(bottom, maxlocCmd.y, maxlocCmd.y + height, (int)(maxlocSci.x + scaledWidth * 1.4), maxlocSci.x + (scaledWidth * 6)), "sec");
+	result->sec.primary = HasStar(
+		SubMat(bottom, maxlocCmd.y, maxlocCmd.y + height, maxlocSci.x - (scaledWidth * 12 / 8), maxlocSci.x - (scaledWidth / 6)), "sec");
 
-	result->med.skillValue = OCRNumber(SubMat(bottom, maxlocCmd.y + height, maxlocSci.y, (int)(maxlocSci.x + scaledWidth * 1.4), maxlocSci.x + (scaledWidth * 6)), "med");
-	result->med.primary = HasStar(SubMat(bottom, maxlocCmd.y + height, maxlocSci.y, maxlocSci.x - (scaledWidth * 12 / 8), maxlocSci.x - (scaledWidth / 6)), "med");
+	result->med.skillValue = OCRNumber(
+		SubMat(bottom, maxlocCmd.y + height, maxlocSci.y, (int)(maxlocSci.x + scaledWidth * 1.4), maxlocSci.x + (scaledWidth * 6)), "med");
+	result->med.primary = HasStar(
+		SubMat(bottom, maxlocCmd.y + height, maxlocSci.y, maxlocSci.x - (scaledWidth * 12 / 8), maxlocSci.x - (scaledWidth / 6)), "med");
 
-	result->sci.skillValue = OCRNumber(SubMat(bottom, maxlocSci.y, maxlocSci.y + height, (int)(maxlocSci.x + scaledWidth * 1.4), maxlocSci.x + (scaledWidth * 6)), "sci");
-	result->sci.primary = HasStar(SubMat(bottom, maxlocSci.y, maxlocSci.y + height, maxlocSci.x - (scaledWidth * 12 / 8), maxlocSci.x - (scaledWidth / 6)), "sci");
+	result->sci.skillValue = OCRNumber(
+		SubMat(bottom, maxlocSci.y, maxlocSci.y + height, (int)(maxlocSci.x + scaledWidth * 1.4), maxlocSci.x + (scaledWidth * 6)), "sci");
+	result->sci.primary = HasStar(
+		SubMat(bottom, maxlocSci.y, maxlocSci.y + height, maxlocSci.x - (scaledWidth * 12 / 8), maxlocSci.x - (scaledWidth / 6)), "sci");
 
 	return true;
 }
@@ -231,41 +237,38 @@ int VoyImageScanner::MatchTop(Mat top)
 	Point maxloc;
 	int scaledWidth = 0;
 	int height = minHeight;
-	for (; height <= maxHeight; height += stepHeight)
-	{
+	for (; height <= maxHeight; height += stepHeight) {
 		Mat scaled;
 		cv::resize(_antimatter, scaled, Size(_antimatter.cols * height / _antimatter.rows, height), 0, 0, cv::INTER_AREA);
 
 		double maxval = ScaleInvariantTemplateMatch(top, scaled, &maxloc);
 
-		if (maxval > 0.8)
-		{
+		if (maxval > 0.8) {
 			scaledWidth = scaled.cols;
 			break;
 		}
 	}
 
-	if (scaledWidth == 0)
-	{
+	if (scaledWidth == 0) {
 		return 0;
 	}
 
 	top = SubMat(top, maxloc.y, maxloc.y + height, maxloc.x + scaledWidth, maxloc.x + (int)(scaledWidth * 6.75));
-	//imwrite("temp.png", top);
+	// imwrite("temp.png", top);
 
 	return OCRNumber(top);
 }
 
-VoySearchResults VoyImageScanner::AnalyzeVoyImage(const char* url)
+VoySearchResults VoyImageScanner::AnalyzeVoyImage(const char *url)
 {
 	VoySearchResults result;
 
 	Mat query;
-	_networkHelper.downloadUrl(url, [&](std::vector<uint8_t>&& v) -> bool {
+	_networkHelper.downloadUrl(url, [&](std::vector<uint8_t> &&v) -> bool {
 		query = cv::imdecode(v, cv::IMREAD_UNCHANGED);
 		result.fileSize = v.size();
 		return true;
-		});
+	});
 
 	// First, take the top of the image and look for the antimatter
 	Mat top = SubMat(query, 0, std::max(query.rows / 5, 80), query.cols / 3, query.cols * 2 / 3);
@@ -278,9 +281,9 @@ VoySearchResults VoyImageScanner::AnalyzeVoyImage(const char* url)
 		return result;
 	}
 
-	// Sometimes the OCR reads an extra 0 if there's a "particle" in exactly the wrong spot
-	if (result.antimatter > 8000)
-	{
+	// Sometimes the OCR reads an extra 0 if there's a "particle" in exactly the
+	// wrong spot
+	if (result.antimatter > 8000) {
 		result.antimatter = result.antimatter / 10;
 	}
 
@@ -291,8 +294,7 @@ VoySearchResults VoyImageScanner::AnalyzeVoyImage(const char* url)
 
 	cv::threshold(bottom, bottom, 100, 1, cv::THRESH_TOZERO);
 
-	if (!MatchBottom(bottom, &result))
-	{
+	if (!MatchBottom(bottom, &result)) {
 		// Not found
 		result.error = "Could not read skill values";
 		return result;
@@ -303,7 +305,9 @@ VoySearchResults VoyImageScanner::AnalyzeVoyImage(const char* url)
 	return result;
 }
 
-std::shared_ptr<IVoyImageScanner> MakeVoyImageScanner(const std::string& basePath)
+std::shared_ptr<IVoyImageScanner> MakeVoyImageScanner(const std::string &basePath)
 {
 	return std::make_shared<VoyImageScanner>(basePath.c_str());
 }
+
+} // namespace DataCore

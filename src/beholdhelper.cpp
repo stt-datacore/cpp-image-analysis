@@ -1,18 +1,17 @@
+#include "beholdhelper.h"
+
 #include <algorithm>
+#include <filesystem>
 #include <iostream>
+#include <map>
 #include <sstream>
 #include <vector>
-#include <map>
-#include <filesystem>
 
-#include <opencv2/opencv.hpp>
-#include "opencv_surf/surf.h"
-
-#include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
+#include <opencv2/opencv.hpp>
 
-#include "beholdhelper.h"
 #include "networkhelper.h"
+#include "opencv_surf/surf.h"
 #include "utils.h"
 
 namespace fs = std::filesystem;
@@ -20,74 +19,72 @@ namespace fs = std::filesystem;
 using namespace cv;
 using namespace cv::xxfeatures2d;
 
-//function to retrieve the image as cv::Mat data type
-Mat curlImg(const char* img_url)
+namespace DataCore {
+
+// function to retrieve the image as cv::Mat data type
+Mat curlImg(const char *img_url)
 {
 	static NetworkHelper networkHelper;
 
 	Mat query;
-	networkHelper.downloadUrl(img_url, [&](std::vector<uint8_t>&& v) -> bool {
+	networkHelper.downloadUrl(img_url, [&](std::vector<uint8_t> &&v) -> bool {
 		query = cv::imdecode(v, cv::IMREAD_UNCHANGED);
 		return true;
-		});
+	});
 
 	return query;
 }
 
-bool fileExists(const std::string& fileName)
+bool fileExists(const std::string &fileName)
 {
 	std::ifstream infile(fileName);
 	return infile.good();
 }
 
-void matwrite(const std::string& filename, const Mat& mat)
+void matwrite(const std::string &filename, const Mat &mat)
 {
 	std::ofstream fs(filename, std::fstream::binary);
 
 	// Header
 	int type = mat.type();
 	int channels = mat.channels();
-	fs.write((char*)&mat.rows, sizeof(int));    // rows
-	fs.write((char*)&mat.cols, sizeof(int));    // cols
-	fs.write((char*)&type, sizeof(int));        // type
-	fs.write((char*)&channels, sizeof(int));    // channels
+	fs.write((char *)&mat.rows, sizeof(int)); // rows
+	fs.write((char *)&mat.cols, sizeof(int)); // cols
+	fs.write((char *)&type, sizeof(int));	  // type
+	fs.write((char *)&channels, sizeof(int)); // channels
 
 	// Data
-	if (mat.isContinuous())
-	{
+	if (mat.isContinuous()) {
 		fs.write(mat.ptr<char>(0), (mat.dataend - mat.datastart));
-	}
-	else
-	{
+	} else {
 		int rowsz = CV_ELEM_SIZE(type) * mat.cols;
-		for (int r = 0; r < mat.rows; ++r)
-		{
+		for (int r = 0; r < mat.rows; ++r) {
 			fs.write(mat.ptr<char>(r), rowsz);
 		}
 	}
 }
 
-Mat matread(const std::string& filename)
+Mat matread(const std::string &filename)
 {
 	std::ifstream fs(filename, std::fstream::binary);
 
 	// Header
 	int rows, cols, type, channels;
-	fs.read((char*)&rows, sizeof(int));         // rows
-	fs.read((char*)&cols, sizeof(int));         // cols
-	fs.read((char*)&type, sizeof(int));         // type
-	fs.read((char*)&channels, sizeof(int));     // channels
+	fs.read((char *)&rows, sizeof(int));	 // rows
+	fs.read((char *)&cols, sizeof(int));	 // cols
+	fs.read((char *)&type, sizeof(int));	 // type
+	fs.read((char *)&channels, sizeof(int)); // channels
 
 	// Data
 	Mat mat(rows, cols, type);
-	fs.read((char*)mat.data, CV_ELEM_SIZE(type) * rows * cols);
+	fs.read((char *)mat.data, CV_ELEM_SIZE(type) * rows * cols);
 
 	return mat;
 }
 
 class Descriptor
 {
-public:
+  public:
 	Descriptor()
 	{
 		_detector = SURF::create(1200, 4 /*nOctaves*/, 3 /*nOctaveLayers*/, false /*extended*/, true /*upright*/);
@@ -103,23 +100,13 @@ public:
 		return descriptors;
 	}
 
-private:
+  private:
 	Ptr<SURF> _detector;
 };
 
-boost::property_tree::ptree MatchResult::toJson()
-{
-	boost::property_tree::ptree pt;
-	pt.put("symbol", symbol);
-	pt.put("score", score);
-	pt.put("starcount", starcount);
-
-	return pt;
-}
-
 class Searcher
 {
-public:
+  public:
 	Searcher()
 	{
 		Clear();
@@ -130,7 +117,7 @@ public:
 		_matcher = DescriptorMatcher::create(DescriptorMatcher::FLANNBASED);
 	}
 
-	bool Add(Mat features, const char* symbol)
+	bool Add(Mat features, const char *symbol)
 	{
 		_matcher->add(features);
 		_symbols.push_back(symbol);
@@ -146,35 +133,34 @@ public:
 
 		// group by image index
 		std::map<int, int> occurences;
-		for (const auto& match : matches) {
+		for (const auto &match : matches) {
 			occurences[match.imgIdx]++;
 		}
 
-		auto max = std::max_element(begin(occurences), end(occurences),
-			[](const decltype(occurences)::value_type& p1, const decltype(occurences)::value_type& p2) {
-				return p1.second < p2.second;
-			});
+		auto max = std::max_element(
+			begin(occurences), end(occurences),
+			[](const decltype(occurences)::value_type &p1, const decltype(occurences)::value_type &p2) { return p1.second < p2.second; });
 
-		return { _symbols[max->first], max->second };
+		return {_symbols[max->first], max->second};
 	}
 
-private:
+  private:
 	Descriptor _descriptor;
 	Ptr<DescriptorMatcher> _matcher;
 
-	// Order here must match order of training in matcher (as it deals in indices only)
+	// Order here must match order of training in matcher (as it deals in indices
+	// only)
 	std::vector<std::string> _symbols;
 };
 
 class Trainer
 {
-public:
-	Trainer(const char* basePath)
-		: _basePath(basePath)
+  public:
+	Trainer(const char *basePath) : _basePath(basePath)
 	{
 	}
 
-	Mat Read(const char* symbol)
+	Mat Read(const char *symbol)
 	{
 		std::stringstream outPath;
 		outPath << _basePath << "train/" << symbol << ".bin";
@@ -184,7 +170,7 @@ public:
 		return result;
 	}
 
-	bool Train(const char* imgUrl, const char* symbol, bool forceReTraining)
+	bool Train(const char *imgUrl, const char *symbol, bool forceReTraining)
 	{
 		std::stringstream outPath;
 		outPath << _basePath << "train/" << symbol << ".bin";
@@ -198,7 +184,7 @@ public:
 		return TrainInternal(image, symbol, forceReTraining);
 	}
 
-	bool TrainFile(const char* imgPath, const char* symbol, bool forceReTraining)
+	bool TrainFile(const char *imgPath, const char *symbol, bool forceReTraining)
 	{
 		std::stringstream outPath;
 		outPath << _basePath << imgPath;
@@ -208,8 +194,8 @@ public:
 		return TrainInternal(image, symbol, forceReTraining);
 	}
 
-private:
-	bool TrainInternal(Mat image, const char* symbol, bool forceReTraining)
+  private:
+	bool TrainInternal(Mat image, const char *symbol, bool forceReTraining)
 	{
 		std::stringstream outPath;
 		outPath << _basePath << "train/" << symbol << ".bin";
@@ -233,46 +219,19 @@ private:
 		return true;
 	}
 
-private:
+  private:
 	Descriptor _descriptor;
 	std::string _basePath;
 };
 
-int CountFullStars(Mat refMat, Mat tplMat, double threshold = 0.8)
+boost::property_tree::ptree MatchResult::toJson()
 {
-	try {
-		Mat res(refMat.rows - tplMat.rows + 1, refMat.cols - tplMat.cols + 1, CV_32FC1);
+	boost::property_tree::ptree pt;
+	pt.put("symbol", symbol);
+	pt.put("score", score);
+	pt.put("starcount", starcount);
 
-		// Threshold out the faded stars
-		cv::threshold(refMat, refMat, 100, 1.0, cv::ThresholdTypes::THRESH_TOZERO);
-		cv::matchTemplate(refMat, tplMat, res, cv::TM_CCORR_NORMED);
-		cv::threshold(res, res, threshold, 1.0, cv::ThresholdTypes::THRESH_TOZERO);
-
-		int numStars = 0;
-		while (true)
-		{
-			double minval, maxval;
-			Point minloc, maxloc;
-			cv::minMaxLoc(res, &minval, &maxval, &minloc, &maxloc);
-
-			if (maxval >= threshold)
-			{
-				numStars++;
-				// Fill in the res Mat so we don't find the same area again in the MinMaxLoc
-				Rect outRect;
-				cv::floodFill(res, maxloc, Scalar(0), &outRect, Scalar(0.1), Scalar(1.0) /*, FloodFillFlags.Link4*/);
-			}
-			else
-			{
-				break;
-			}
-		}
-
-		return numStars;
-	}
-	catch (...) {
-		return 0;
-	}
+	return pt;
 }
 
 boost::property_tree::ptree SearchResults::toJson()
@@ -293,16 +252,17 @@ boost::property_tree::ptree SearchResults::toJson()
 
 class BeholdHelper : public IBeholdHelper
 {
-public:
-	BeholdHelper(const char* basePath)
-		: _basePath(basePath), _trainer(basePath)
+  public:
+	BeholdHelper(const char *basePath) : _basePath(basePath), _trainer(basePath)
 	{
 	}
 
 	bool ReInitialize(bool forceReTraining) override;
-	SearchResults AnalyzeBehold(const char* url) override;
+	SearchResults AnalyzeBehold(const char *url) override;
 
-private:
+  private:
+	int CountFullStars(Mat refMat, Mat tplMat, double threshold = 0.8) noexcept;
+
 	Trainer _trainer;
 	Searcher _searcher;
 	NetworkHelper _networkHelper;
@@ -312,6 +272,39 @@ private:
 
 	std::string _basePath;
 };
+
+int BeholdHelper::CountFullStars(Mat refMat, Mat tplMat, double threshold) noexcept
+{
+	try {
+		Mat res(refMat.rows - tplMat.rows + 1, refMat.cols - tplMat.cols + 1, CV_32FC1);
+
+		// Threshold out the faded stars
+		cv::threshold(refMat, refMat, 100, 1.0, cv::ThresholdTypes::THRESH_TOZERO);
+		cv::matchTemplate(refMat, tplMat, res, cv::TM_CCORR_NORMED);
+		cv::threshold(res, res, threshold, 1.0, cv::ThresholdTypes::THRESH_TOZERO);
+
+		int numStars = 0;
+		while (true) {
+			double minval, maxval;
+			Point minloc, maxloc;
+			cv::minMaxLoc(res, &minval, &maxval, &minloc, &maxloc);
+
+			if (maxval >= threshold) {
+				numStars++;
+				// Fill in the res Mat so we don't find the same area again in the
+				// MinMaxLoc
+				Rect outRect;
+				cv::floodFill(res, maxloc, Scalar(0), &outRect, Scalar(0.1), Scalar(1.0) /*, FloodFillFlags.Link4*/);
+			} else {
+				break;
+			}
+		}
+
+		return numStars;
+	} catch (...) {
+		return 0;
+	}
+}
 
 bool BeholdHelper::ReInitialize(bool forceReTraining)
 {
@@ -329,12 +322,11 @@ bool BeholdHelper::ReInitialize(bool forceReTraining)
 	boost::property_tree::ptree jsontree;
 	boost::property_tree::read_json(fs::path(_basePath + "data/assets.json").make_preferred().string(), jsontree);
 
-	for (const boost::property_tree::ptree::value_type& asset : jsontree.get_child("assets"))
-	{
-		const std::string& symbol = asset.first;
-		const std::string& url = asset.second.data();
+	for (const boost::property_tree::ptree::value_type &asset : jsontree.get_child("assets")) {
+		const std::string &symbol = asset.first;
+		const std::string &url = asset.second.data();
 
-		//std::cout << "Reading " << symbol << "..." << std::endl;
+		// std::cout << "Reading " << symbol << "..." << std::endl;
 
 		if (!_trainer.Train(url.c_str(), symbol.c_str(), forceReTraining))
 			return false;
@@ -346,34 +338,33 @@ bool BeholdHelper::ReInitialize(bool forceReTraining)
 	return true;
 }
 
-SearchResults BeholdHelper::AnalyzeBehold(const char* url)
+SearchResults BeholdHelper::AnalyzeBehold(const char *url)
 {
 	SearchResults results;
 
 	Mat query;
-	_networkHelper.downloadUrl(url, [&](std::vector<uint8_t>&& v) -> bool {
+	_networkHelper.downloadUrl(url, [&](std::vector<uint8_t> &&v) -> bool {
 		query = cv::imdecode(v, cv::IMREAD_UNCHANGED);
 		results.fileSize = v.size();
 		return true;
-		});
+	});
 
-	//imwrite("temp.png", query);
+	// imwrite("temp.png", query);
 
 	results.input_height = query.rows;
 	results.input_width = query.cols;
 
 	Mat top = SubMat(query, 0, std::min(query.rows / 13, 80), query.cols / 3, query.cols * 2 / 3);
-	if (top.empty())
-	{
+	if (top.empty()) {
 		results.error = "Top row was empty";
 		return results;
 	}
 
 	results.top = _searcher.Match(top);
 
-	if (results.top.symbol != "behold_title")
-	{
-		results.error = "Top row doesn't look like a behold title"; //ignorable if other heuristics are high
+	if (results.top.symbol != "behold_title") {
+		results.error = "Top row doesn't look like a behold title"; // ignorable if other
+																	// heuristics are high
 	}
 
 	// split in 3, search for each separately
@@ -385,15 +376,14 @@ SearchResults BeholdHelper::AnalyzeBehold(const char* url)
 	results.crew2 = _searcher.Match(crew2);
 	results.crew3 = _searcher.Match(crew3);
 
-	//imwrite("temp.png", crew1);
+	// imwrite("temp.png", crew1);
 
 	// TODO: only do this part if valid (to not waste time)
 	results.crew1.starcount = 0;
 	results.crew2.starcount = 0;
 	results.crew3.starcount = 0;
 	int closebuttons = 0;
-	if ((results.crew1.score > 0) && (results.crew2.score > 0) && (results.crew3.score > 0))
-	{
+	if ((results.crew1.score > 0) && (results.crew2.score > 0) && (results.crew3.score > 0)) {
 		int starScale = 72;
 		float scale = (float)query.cols / 100;
 		Mat stars1 = SubMat(query, (int)(scale * 9.2), (int)(scale * 12.8), 30, query.cols / 3);
@@ -414,11 +404,13 @@ SearchResults BeholdHelper::AnalyzeBehold(const char* url)
 		cv::resize(corner, corner, Size(78, 78), 0, 0, cv::INTER_AREA);
 		results.closebuttons = CountFullStars(corner, _closeButton, 0.7);
 
-		// TODO: If it kind-of looks like a behold (we get 2 valid crew out of 3), special-case the "hidden / crouching" characters by looking at their names
+		// TODO: If it kind-of looks like a behold (we get 2 valid crew out of 3),
+		// special-case the "hidden / crouching" characters by looking at their
+		// names
 		Mat name1 = SubMat(query, (int)(scale * 5.8), (int)(scale * 9.1), 30, query.cols / 3);
 		Mat name2 = SubMat(query, (int)(scale * 5.8), (int)(scale * 9.1), query.cols * 1 / 3 + 30, query.cols * 2 / 3);
 		Mat name3 = SubMat(query, (int)(scale * 5.8), (int)(scale * 9.1), query.cols * 2 / 3 + 30, query.cols - 30);
-		//cv::imwrite("name1.png", name1);
+		// cv::imwrite("name1.png", name1);
 
 		// TODO: OCR
 	}
@@ -426,7 +418,9 @@ SearchResults BeholdHelper::AnalyzeBehold(const char* url)
 	return results;
 }
 
-std::shared_ptr<IBeholdHelper> MakeBeholdHelper(const std::string& basePath)
+std::shared_ptr<IBeholdHelper> MakeBeholdHelper(const std::string &basePath)
 {
 	return std::make_shared<BeholdHelper>(basePath.c_str());
 }
+
+} // namespace DataCore

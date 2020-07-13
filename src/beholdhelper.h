@@ -1,4 +1,9 @@
 #include <memory>
+#include <string>
+
+#include <boost/property_tree/ptree.hpp>
+
+namespace DataCore {
 
 struct MatchResult
 {
@@ -24,10 +29,12 @@ struct SearchResults
 	boost::property_tree::ptree toJson();
 };
 
-struct IBeholdHelper /* : std::enable_shared_from_this<IBeholdHelper>*/
+struct IBeholdHelper
 {
 	virtual bool ReInitialize(bool forceReTraining) = 0;
-	virtual SearchResults AnalyzeBehold(const char* url) = 0;
+	virtual SearchResults AnalyzeBehold(const char *url) = 0;
 };
 
-std::shared_ptr<IBeholdHelper> MakeBeholdHelper(const std::string& basePath);
+std::shared_ptr<IBeholdHelper> MakeBeholdHelper(const std::string &basePath);
+
+} // namespace DataCore

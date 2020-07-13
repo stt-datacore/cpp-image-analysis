@@ -1,5 +1,7 @@
 #include <memory>
 
+namespace DataCore {
+
 struct ParsedSkill
 {
 	int skillValue;
@@ -15,7 +17,7 @@ struct VoySearchResults
 	std::string error;
 	size_t fileSize;
 
-	bool valid{ false };
+	bool valid{false};
 	int antimatter;
 	ParsedSkill cmd;
 	ParsedSkill dip;
@@ -30,7 +32,9 @@ struct VoySearchResults
 struct IVoyImageScanner
 {
 	virtual bool ReInitialize(bool forceReTraining) = 0;
-	virtual VoySearchResults AnalyzeVoyImage(const char* url) = 0;
+	virtual VoySearchResults AnalyzeVoyImage(const char *url) = 0;
 };
 
-std::shared_ptr<IVoyImageScanner> MakeVoyImageScanner(const std::string& basePath);
+std::shared_ptr<IVoyImageScanner> MakeVoyImageScanner(const std::string &basePath);
+
+} // namespace DataCore
