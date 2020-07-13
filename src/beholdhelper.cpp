@@ -13,6 +13,7 @@
 
 #include "beholdhelper.h"
 #include "networkhelper.h"
+#include "utils.h"
 
 namespace fs = std::filesystem;
 
@@ -236,11 +237,6 @@ private:
 	Descriptor _descriptor;
 	std::string _basePath;
 };
-
-Mat SubMat(Mat input, int rowStart, int rowEnd, int colStart, int colEnd)
-{
-	return input(Rect(colStart, rowStart, colEnd - colStart, rowEnd - rowStart));
-}
 
 int CountFullStars(Mat refMat, Mat tplMat, double threshold = 0.8)
 {

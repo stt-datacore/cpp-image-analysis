@@ -24,11 +24,10 @@ else()
 endif()
 
 find_package(OpenCV CONFIG REQUIRED)
-
 find_package(Boost COMPONENTS system REQUIRED)
 find_package(OpenSSL REQUIRED)
 
-add_executable(imserver src/main.cpp src/networkhelper.cpp src/wsserver.cpp src/beholdhelper.cpp src/voyimage.cpp src/opencv_surf/surf.cpp)
+add_executable(imserver src/main.cpp src/networkhelper.cpp src/wsserver.cpp src/beholdhelper.cpp src/voyimage.cpp src/opencv_surf/surf.cpp src/utils.cpp)
 
 target_link_libraries(imserver PRIVATE opencv_core opencv_imgcodecs opencv_features2d Boost::system OpenSSL::SSL OpenSSL::Crypto)
 

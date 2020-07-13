@@ -15,9 +15,15 @@ int main(int argc, char** argv)
 	}
 
 	std::shared_ptr<IBeholdHelper> beholdHelper = MakeBeholdHelper(basePath);
+	std::shared_ptr<IVoyImageScanner> voyImageScanner = MakeVoyImageScanner(basePath);
 
 	// Load all matrices from disk
 	beholdHelper->ReInitialize(false);
+
+	// Initialize the Tesseract OCR engine
+	voyImageScanner->ReInitialize(false);
+
+	std::cout << "Ready!" << std::endl;
 
 	// Blocking
 	start_server([&](std::string&& message) -> std::string {
@@ -42,6 +48,16 @@ int main(int argc, char** argv)
 			SearchResults results = beholdHelper->AnalyzeBehold(beholdUrl.c_str());
 
 			pt.put("beholdUrl", beholdUrl);
+			pt.put_child("results", results.toJson());
+			pt.put("success", true);
+		}
+		else if (message.find("VOYIMAGE") == 0) {
+			// Run the behold analyzer
+			std::string voyImageUrl = message.substr(8);
+
+			VoySearchResults results = voyImageScanner->AnalyzeVoyImage(voyImageUrl.c_str());
+
+			pt.put("voyImageUrl", voyImageUrl);
 			pt.put_child("results", results.toJson());
 			pt.put("success", true);
 		}

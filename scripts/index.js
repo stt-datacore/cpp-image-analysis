@@ -22,7 +22,8 @@ client.on('connect', function(connection) {
     
     function sendReinit() {
         if (connection.connected) {
-            connection.sendUTF("BEHOLDhttps://cdn.discordapp.com/attachments/249321466481475585/731313240818188368/Star_Trek_2020-07-10-18-56-27.jpg");
+            //connection.sendUTF("BEHOLDhttps://cdn.discordapp.com/attachments/249321466481475585/731313240818188368/Star_Trek_2020-07-10-18-56-27.jpg");
+            connection.sendUTF("VOYIMAGEhttps://cdn.discordapp.com/attachments/296001137809686528/732071634352996373/image0.png");
         }
     }
     sendReinit();
