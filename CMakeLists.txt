@@ -3,8 +3,7 @@ project(DataCoreImServer)
 
 set(CMAKE_CXX_STANDARD 17)
 
-# There is no ubuntu package for xfeatures2d (SURF). OpenCV needs to be built from source to include them :(
-#sudo apt-get install cmake build-essential libboost-all-dev libopencv-dev libopencv-contrib-dev openssl libboost-all-dev libtesseract-dev libssl-dev
+#sudo apt-get install cmake build-essential libboost-all-dev libopencv-dev openssl libboost-all-dev libtesseract-dev libssl-dev
 
 if(WIN32)
 	set(CMAKE_CXX_FLAGS_RELEASE "/MT")

@@ -3,6 +3,7 @@
 #include <sstream>
 #include <vector>
 #include <map>
+#include <filesystem>
 
 #include <opencv2/opencv.hpp>
 #include "opencv_surf/surf.h"
@@ -12,6 +13,8 @@
 
 #include "beholdhelper.h"
 #include "networkhelper.h"
+
+namespace fs = std::filesystem;
 
 using namespace cv;
 using namespace cv::xxfeatures2d;
@@ -30,7 +33,7 @@ Mat curlImg(const char* img_url)
 	return query;
 }
 
-bool fileExists(const char* fileName)
+bool fileExists(const std::string& fileName)
 {
 	std::ifstream infile(fileName);
 	return infile.good();
@@ -175,7 +178,7 @@ public:
 		std::stringstream outPath;
 		outPath << _basePath << "train\\" << symbol << ".bin";
 
-		Mat result = matread(outPath.str());
+		Mat result = matread(fs::path(outPath.str()).make_preferred().string());
 
 		return result;
 	}
@@ -186,7 +189,7 @@ public:
 		outPath << _basePath << "train\\" << symbol << ".bin";
 
 		// if file already exists, bail
-		if (!forceReTraining && fileExists(outPath.str().c_str()))
+		if (!forceReTraining && fileExists(fs::path(outPath.str()).make_preferred().string()))
 			return true;
 
 		Mat image = curlImg(imgUrl);
@@ -199,7 +202,7 @@ public:
 		std::stringstream outPath;
 		outPath << _basePath << imgPath;
 
-		Mat image = imread(outPath.str());
+		Mat image = imread(fs::path(outPath.str()).make_preferred().string());
 
 		return TrainInternal(image, symbol, forceReTraining);
 	}
@@ -211,7 +214,7 @@ private:
 		outPath << _basePath << "train\\" << symbol << ".bin";
 
 		// if file already exists, bail
-		if (!forceReTraining && fileExists(outPath.str().c_str()))
+		if (!forceReTraining && fileExists(fs::path(outPath.str()).make_preferred().string()))
 			return true;
 
 		if (image.empty())
@@ -316,8 +319,8 @@ private:
 
 bool BeholdHelper::ReInitialize(bool forceReTraining)
 {
-	_starFull = cv::imread(_basePath + "data\\starfull.png");
-	_closeButton = cv::imread(_basePath + "data\\closeButton.png");
+	_starFull = cv::imread(fs::path(_basePath + "data\\starfull.png").make_preferred().string());
+	_closeButton = cv::imread(fs::path(_basePath + "data\\closeButton.png").make_preferred().string());
 
 	_searcher.Clear();
 
@@ -328,7 +331,7 @@ bool BeholdHelper::ReInitialize(bool forceReTraining)
 	_searcher.Add(tr, "behold_title");
 
 	boost::property_tree::ptree jsontree;
-	boost::property_tree::read_json("..\\..\\..\\data\\assets.json", jsontree);
+	boost::property_tree::read_json(fs::path(_basePath + "data\\assets.json").make_preferred().string(), jsontree);
 
 	for (const boost::property_tree::ptree::value_type& asset : jsontree.get_child("assets"))
 	{
