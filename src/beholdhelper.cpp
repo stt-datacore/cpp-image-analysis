@@ -1,5 +1,3 @@
-#include "beholdhelper.h"
-
 #include <algorithm>
 #include <filesystem>
 #include <iostream>
@@ -10,23 +8,22 @@
 #include <boost/property_tree/json_parser.hpp>
 #include <opencv2/opencv.hpp>
 
+#include "beholdhelper.h"
 #include "networkhelper.h"
 #include "opencv_surf/surf.h"
 #include "utils.h"
 
-namespace fs = std::filesystem;
 
-using namespace cv;
-using namespace cv::xxfeatures2d;
+namespace fs = std::filesystem;
 
 namespace DataCore {
 
 // function to retrieve the image as cv::Mat data type
-Mat curlImg(const char *img_url)
+cv::Mat curlImg(const char *img_url)
 {
 	static NetworkHelper networkHelper;
 
-	Mat query;
+	cv::Mat query;
 	networkHelper.downloadUrl(img_url, [&](std::vector<uint8_t> &&v) -> bool {
 		query = cv::imdecode(v, cv::IMREAD_UNCHANGED);
 		return true;
@@ -41,7 +38,7 @@ bool fileExists(const std::string &fileName)
 	return infile.good();
 }
 
-void matwrite(const std::string &filename, const Mat &mat)
+void matwrite(const std::string &filename, const cv::Mat &mat)
 {
 	std::ofstream fs(filename, std::fstream::binary);
 
@@ -64,7 +61,7 @@ void matwrite(const std::string &filename, const Mat &mat)
 	}
 }
 
-Mat matread(const std::string &filename)
+cv::Mat matread(const std::string &filename)
 {
 	std::ifstream fs(filename, std::fstream::binary);
 
@@ -76,7 +73,7 @@ Mat matread(const std::string &filename)
 	fs.read((char *)&channels, sizeof(int)); // channels
 
 	// Data
-	Mat mat(rows, cols, type);
+	cv::Mat mat(rows, cols, type);
 	fs.read((char *)mat.data, CV_ELEM_SIZE(type) * rows * cols);
 
 	return mat;
@@ -87,21 +84,21 @@ class Descriptor
   public:
 	Descriptor()
 	{
-		_detector = SURF::create(1200, 4 /*nOctaves*/, 3 /*nOctaveLayers*/, false /*extended*/, true /*upright*/);
+		_detector = cv::xxfeatures2d::SURF::create(1200, 4 /*nOctaves*/, 3 /*nOctaveLayers*/, false /*extended*/, true /*upright*/);
 	}
 
-	Mat Describe(InputArray image)
+	cv::Mat Describe(cv::InputArray image)
 	{
-		std::vector<KeyPoint> keypoints;
-		Mat descriptors;
+		std::vector<cv::KeyPoint> keypoints;
+		cv::Mat descriptors;
 
-		_detector->detectAndCompute(image, noArray(), keypoints, descriptors);
+		_detector->detectAndCompute(image, cv::noArray(), keypoints, descriptors);
 
 		return descriptors;
 	}
 
   private:
-	Ptr<SURF> _detector;
+	cv::Ptr<cv::xxfeatures2d::SURF> _detector;
 };
 
 class Searcher
@@ -114,21 +111,21 @@ class Searcher
 
 	void Clear()
 	{
-		_matcher = DescriptorMatcher::create(DescriptorMatcher::FLANNBASED);
+		_matcher = cv::DescriptorMatcher::create(cv::DescriptorMatcher::FLANNBASED);
 	}
 
-	bool Add(Mat features, const char *symbol)
+	bool Add(cv::Mat features, const char *symbol)
 	{
 		_matcher->add(features);
 		_symbols.push_back(symbol);
 		return true;
 	}
 
-	MatchResult Match(Mat image)
+	MatchResult Match(cv::Mat image)
 	{
-		Mat features = _descriptor.Describe(image);
+		cv::Mat features = _descriptor.Describe(image);
 
-		std::vector<DMatch> matches;
+		std::vector<cv::DMatch> matches;
 		_matcher->match(features, matches);
 
 		// group by image index
@@ -146,7 +143,7 @@ class Searcher
 
   private:
 	Descriptor _descriptor;
-	Ptr<DescriptorMatcher> _matcher;
+	cv::Ptr<cv::DescriptorMatcher> _matcher;
 
 	// Order here must match order of training in matcher (as it deals in indices
 	// only)
@@ -160,12 +157,12 @@ class Trainer
 	{
 	}
 
-	Mat Read(const char *symbol)
+	cv::Mat Read(const char *symbol)
 	{
 		std::stringstream outPath;
 		outPath << _basePath << "train/" << symbol << ".bin";
 
-		Mat result = matread(fs::path(outPath.str()).make_preferred().string());
+		cv::Mat result = matread(fs::path(outPath.str()).make_preferred().string());
 
 		return result;
 	}
@@ -179,7 +176,7 @@ class Trainer
 		if (!forceReTraining && fileExists(fs::path(outPath.str()).make_preferred().string()))
 			return true;
 
-		Mat image = curlImg(imgUrl);
+		cv::Mat image = curlImg(imgUrl);
 
 		return TrainInternal(image, symbol, forceReTraining);
 	}
@@ -189,13 +186,13 @@ class Trainer
 		std::stringstream outPath;
 		outPath << _basePath << imgPath;
 
-		Mat image = imread(fs::path(outPath.str()).make_preferred().string());
+		cv::Mat image = cv::imread(fs::path(outPath.str()).make_preferred().string());
 
 		return TrainInternal(image, symbol, forceReTraining);
 	}
 
   private:
-	bool TrainInternal(Mat image, const char *symbol, bool forceReTraining)
+	bool TrainInternal(cv::Mat image, const char *symbol, bool forceReTraining)
 	{
 		std::stringstream outPath;
 		outPath << _basePath << "train/" << symbol << ".bin";
@@ -208,7 +205,7 @@ class Trainer
 			return false;
 
 		// crop the image
-		image = image(Rect(0, 0, image.cols, image.rows * 7 / 10));
+		image = image(cv::Rect(0, 0, image.cols, image.rows * 7 / 10));
 
 		auto features = _descriptor.Describe(image);
 
@@ -229,7 +226,7 @@ boost::property_tree::ptree MatchResult::toJson()
 	boost::property_tree::ptree pt;
 	pt.put("symbol", symbol);
 	pt.put("score", score);
-	pt.put("starcount", starcount);
+	pt.put("stars", starcount);
 
 	return pt;
 }
@@ -259,9 +256,10 @@ class BeholdHelper : public IBeholdHelper
 
 	bool ReInitialize(bool forceReTraining) override;
 	SearchResults AnalyzeBehold(const char *url) override;
+	SearchResults AnalyzeBehold(cv::Mat query, size_t fileSize) override;
 
   private:
-	int CountFullStars(Mat refMat, Mat tplMat, double threshold = 0.8) noexcept;
+	int CountFullStars(cv::Mat refMat, cv::Mat tplMat, double threshold = 0.8) noexcept;
 
 	Trainer _trainer;
 	Searcher _searcher;
@@ -273,10 +271,10 @@ class BeholdHelper : public IBeholdHelper
 	std::string _basePath;
 };
 
-int BeholdHelper::CountFullStars(Mat refMat, Mat tplMat, double threshold) noexcept
+int BeholdHelper::CountFullStars(cv::Mat refMat, cv::Mat tplMat, double threshold) noexcept
 {
 	try {
-		Mat res(refMat.rows - tplMat.rows + 1, refMat.cols - tplMat.cols + 1, CV_32FC1);
+		cv::Mat res(refMat.rows - tplMat.rows + 1, refMat.cols - tplMat.cols + 1, CV_32FC1);
 
 		// Threshold out the faded stars
 		cv::threshold(refMat, refMat, 100, 1.0, cv::ThresholdTypes::THRESH_TOZERO);
@@ -286,15 +284,15 @@ int BeholdHelper::CountFullStars(Mat refMat, Mat tplMat, double threshold) noexc
 		int numStars = 0;
 		while (true) {
 			double minval, maxval;
-			Point minloc, maxloc;
+			cv::Point minloc, maxloc;
 			cv::minMaxLoc(res, &minval, &maxval, &minloc, &maxloc);
 
 			if (maxval >= threshold) {
 				numStars++;
 				// Fill in the res Mat so we don't find the same area again in the
 				// MinMaxLoc
-				Rect outRect;
-				cv::floodFill(res, maxloc, Scalar(0), &outRect, Scalar(0.1), Scalar(1.0) /*, FloodFillFlags.Link4*/);
+				cv::Rect outRect;
+				cv::floodFill(res, maxloc, cv::Scalar(0), &outRect, cv::Scalar(0.1), cv::Scalar(1.0));
 			} else {
 				break;
 			}
@@ -316,7 +314,7 @@ bool BeholdHelper::ReInitialize(bool forceReTraining)
 	if (!_trainer.TrainFile("data/behold_title.png", "behold_title", forceReTraining))
 		return false;
 
-	Mat tr = _trainer.Read("behold_title");
+	cv::Mat tr = _trainer.Read("behold_title");
 	_searcher.Add(tr, "behold_title");
 
 	boost::property_tree::ptree jsontree;
@@ -331,7 +329,7 @@ bool BeholdHelper::ReInitialize(bool forceReTraining)
 		if (!_trainer.Train(url.c_str(), symbol.c_str(), forceReTraining))
 			return false;
 
-		Mat tr = _trainer.Read(symbol.c_str());
+		cv::Mat tr = _trainer.Read(symbol.c_str());
 		_searcher.Add(tr, symbol.c_str());
 	}
 
@@ -340,21 +338,28 @@ bool BeholdHelper::ReInitialize(bool forceReTraining)
 
 SearchResults BeholdHelper::AnalyzeBehold(const char *url)
 {
-	SearchResults results;
-
-	Mat query;
+	size_t fileSize;
+	cv::Mat query;
 	_networkHelper.downloadUrl(url, [&](std::vector<uint8_t> &&v) -> bool {
 		query = cv::imdecode(v, cv::IMREAD_UNCHANGED);
-		results.fileSize = v.size();
+		fileSize = v.size();
 		return true;
 	});
 
 	// imwrite("temp.png", query);
 
+	return AnalyzeBehold(query, fileSize);
+}
+
+SearchResults BeholdHelper::AnalyzeBehold(cv::Mat query, size_t fileSize)
+{
+	SearchResults results;
+	results.fileSize = fileSize;
+
 	results.input_height = query.rows;
 	results.input_width = query.cols;
 
-	Mat top = SubMat(query, 0, std::min(query.rows / 13, 80), query.cols / 3, query.cols * 2 / 3);
+	cv::Mat top = SubMat(query, 0, std::min(query.rows / 13, 80), query.cols / 3, query.cols * 2 / 3);
 	if (top.empty()) {
 		results.error = "Top row was empty";
 		return results;
@@ -368,9 +373,9 @@ SearchResults BeholdHelper::AnalyzeBehold(const char *url)
 	}
 
 	// split in 3, search for each separately
-	Mat crew1 = SubMat(query, query.rows * 2 / 8, (int)(query.rows * 4.5 / 8), 30, query.cols / 3);
-	Mat crew2 = SubMat(query, query.rows * 2 / 8, (int)(query.rows * 4.5 / 8), query.cols * 1 / 3 + 30, query.cols * 2 / 3);
-	Mat crew3 = SubMat(query, query.rows * 2 / 8, (int)(query.rows * 4.5 / 8), query.cols * 2 / 3 + 30, query.cols - 30);
+	cv::Mat crew1 = SubMat(query, query.rows * 2 / 8, (int)(query.rows * 4.5 / 8), 30, query.cols / 3);
+	cv::Mat crew2 = SubMat(query, query.rows * 2 / 8, (int)(query.rows * 4.5 / 8), query.cols * 1 / 3 + 30, query.cols * 2 / 3);
+	cv::Mat crew3 = SubMat(query, query.rows * 2 / 8, (int)(query.rows * 4.5 / 8), query.cols * 2 / 3 + 30, query.cols - 30);
 
 	results.crew1 = _searcher.Match(crew1);
 	results.crew2 = _searcher.Match(crew2);
@@ -386,13 +391,13 @@ SearchResults BeholdHelper::AnalyzeBehold(const char *url)
 	if ((results.crew1.score > 0) && (results.crew2.score > 0) && (results.crew3.score > 0)) {
 		int starScale = 72;
 		float scale = (float)query.cols / 100;
-		Mat stars1 = SubMat(query, (int)(scale * 9.2), (int)(scale * 12.8), 30, query.cols / 3);
-		Mat stars2 = SubMat(query, (int)(scale * 9.2), (int)(scale * 12.8), query.cols * 1 / 3 + 30, query.cols * 2 / 3);
-		Mat stars3 = SubMat(query, (int)(scale * 9.2), (int)(scale * 12.8), query.cols * 2 / 3 + 30, query.cols - 30);
+		cv::Mat stars1 = SubMat(query, (int)(scale * 9.2), (int)(scale * 12.8), 30, query.cols / 3);
+		cv::Mat stars2 = SubMat(query, (int)(scale * 9.2), (int)(scale * 12.8), query.cols * 1 / 3 + 30, query.cols * 2 / 3);
+		cv::Mat stars3 = SubMat(query, (int)(scale * 9.2), (int)(scale * 12.8), query.cols * 2 / 3 + 30, query.cols - 30);
 
-		cv::resize(stars1, stars1, Size(stars1.cols * starScale / stars1.rows, starScale), 0, 0, cv::INTER_AREA);
-		cv::resize(stars2, stars2, Size(stars2.cols * starScale / stars2.rows, starScale), 0, 0, cv::INTER_AREA);
-		cv::resize(stars3, stars3, Size(stars3.cols * starScale / stars3.rows, starScale), 0, 0, cv::INTER_AREA);
+		cv::resize(stars1, stars1, cv::Size(stars1.cols * starScale / stars1.rows, starScale), 0, 0, cv::INTER_AREA);
+		cv::resize(stars2, stars2, cv::Size(stars2.cols * starScale / stars2.rows, starScale), 0, 0, cv::INTER_AREA);
+		cv::resize(stars3, stars3, cv::Size(stars3.cols * starScale / stars3.rows, starScale), 0, 0, cv::INTER_AREA);
 
 		results.crew1.starcount = CountFullStars(stars1, _starFull);
 		results.crew2.starcount = CountFullStars(stars2, _starFull);
@@ -400,16 +405,16 @@ SearchResults BeholdHelper::AnalyzeBehold(const char *url)
 
 		// If there's a close button, this isn't a behold
 		int upperRightCorner = (int)(std::min(query.rows, query.cols) * 0.11);
-		Mat corner = SubMat(query, 0, upperRightCorner, query.cols - upperRightCorner, query.cols);
-		cv::resize(corner, corner, Size(78, 78), 0, 0, cv::INTER_AREA);
+		cv::Mat corner = SubMat(query, 0, upperRightCorner, query.cols - upperRightCorner, query.cols);
+		cv::resize(corner, corner, cv::Size(78, 78), 0, 0, cv::INTER_AREA);
 		results.closebuttons = CountFullStars(corner, _closeButton, 0.7);
 
 		// TODO: If it kind-of looks like a behold (we get 2 valid crew out of 3),
 		// special-case the "hidden / crouching" characters by looking at their
 		// names
-		Mat name1 = SubMat(query, (int)(scale * 5.8), (int)(scale * 9.1), 30, query.cols / 3);
-		Mat name2 = SubMat(query, (int)(scale * 5.8), (int)(scale * 9.1), query.cols * 1 / 3 + 30, query.cols * 2 / 3);
-		Mat name3 = SubMat(query, (int)(scale * 5.8), (int)(scale * 9.1), query.cols * 2 / 3 + 30, query.cols - 30);
+		cv::Mat name1 = SubMat(query, (int)(scale * 5.8), (int)(scale * 9.1), 30, query.cols / 3);
+		cv::Mat name2 = SubMat(query, (int)(scale * 5.8), (int)(scale * 9.1), query.cols * 1 / 3 + 30, query.cols * 2 / 3);
+		cv::Mat name3 = SubMat(query, (int)(scale * 5.8), (int)(scale * 9.1), query.cols * 2 / 3 + 30, query.cols - 30);
 		// cv::imwrite("name1.png", name1);
 
 		// TODO: OCR

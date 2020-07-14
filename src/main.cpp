@@ -3,9 +3,13 @@
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 
+#include <opencv2/opencv.hpp>
+
 #include "beholdhelper.h"
+#include "networkhelper.h"
 #include "voyimage.h"
 #include "wsserver.h"
+
 
 using namespace DataCore;
 
@@ -16,6 +20,7 @@ int main(int argc, char **argv)
 		basePath = argv[1];
 	}
 
+	NetworkHelper networkHelper;
 	std::shared_ptr<IBeholdHelper> beholdHelper = MakeBeholdHelper(basePath);
 	std::shared_ptr<IVoyImageScanner> voyImageScanner = MakeVoyImageScanner(basePath);
 
@@ -59,6 +64,25 @@ int main(int argc, char **argv)
 
 			pt.put("voyImageUrl", voyImageUrl);
 			pt.put_child("results", results.toJson());
+			pt.put("success", true);
+		} else if (message.find("BOTH") == 0) {
+			// Run both analyzers
+			std::string url = message.substr(4);
+
+			size_t fileSize;
+			cv::Mat query;
+			networkHelper.downloadUrl(url, [&](std::vector<uint8_t> &&v) -> bool {
+				query = cv::imdecode(v, cv::IMREAD_UNCHANGED);
+				fileSize = v.size();
+				return true;
+			});
+
+			VoySearchResults voyResult = voyImageScanner->AnalyzeVoyImage(query, fileSize);
+			SearchResults beholdResult = beholdHelper->AnalyzeBehold(query, fileSize);
+
+			pt.put("url", url);
+			pt.put_child("beholdResult", beholdResult.toJson());
+			pt.put_child("voyResult", voyResult.toJson());
 			pt.put("success", true);
 		} else {
 			// unknown message

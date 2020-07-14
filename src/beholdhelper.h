@@ -1,8 +1,6 @@
 #include <memory>
 #include <string>
 
-#include <boost/property_tree/ptree.hpp>
-
 namespace DataCore {
 
 struct MatchResult
@@ -33,6 +31,7 @@ struct IBeholdHelper
 {
 	virtual bool ReInitialize(bool forceReTraining) = 0;
 	virtual SearchResults AnalyzeBehold(const char *url) = 0;
+	virtual SearchResults AnalyzeBehold(cv::Mat query, size_t fileSize) = 0;
 };
 
 std::shared_ptr<IBeholdHelper> MakeBeholdHelper(const std::string &basePath);

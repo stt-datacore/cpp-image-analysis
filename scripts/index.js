@@ -1,32 +1,28 @@
-const WebSocketClient = require('websocket').client;
+const WebSocket = require('ws');
 
-var client = new WebSocketClient();
+async function connectWebSocket(url) {
+	return new Promise((resolve, reject) => {
+		const ws = new WebSocket(url);
 
-client.on('connectFailed', function(error) {
-    console.log('Connect Error: ' + error.toString());
-});
- 
-client.on('connect', function(connection) {
-    console.log('WebSocket Client Connected');
-    connection.on('error', function(error) {
-        console.log("Connection Error: " + error.toString());
-    });
-    connection.on('close', function() {
-        console.log('echo-protocol Connection Closed');
-    });
-    connection.on('message', function(message) {
-        if (message.type === 'utf8') {
-            console.log("Received: '" + message.utf8Data + "'");
-        }
-    });
-    
-    function sendReinit() {
-        if (connection.connected) {
-            //connection.sendUTF("BEHOLDhttps://cdn.discordapp.com/attachments/249321466481475585/731313240818188368/Star_Trek_2020-07-10-18-56-27.jpg");
-            connection.sendUTF("VOYIMAGEhttps://cdn.discordapp.com/attachments/296001137809686528/732071634352996373/image0.png");
-        }
-    }
-    sendReinit();
-});
+		ws.on('open', function open() {
+			resolve(ws);
+		});
+	});
+}
 
-client.connect('ws://localhost:5001/');
+async function sendAndWait(ws, message) {
+	return new Promise((resolve, reject) => {
+		ws.on('message', function incoming(data) {
+			resolve(data);
+		});
+		ws.send(message);
+	});
+}
+
+connectWebSocket('ws://localhost:5001/').then(async ws => {
+    let reply = await sendAndWait(ws, 'BOTHhttps://cdn.discordapp.com/attachments/296001137809686528/732071634352996373/image0.png');
+    console.log(reply);
+
+    reply = await sendAndWait(ws, 'BOTHhttps://cdn.discordapp.com/attachments/296001137809686528/732071634352996373/image0.png');
+    console.log(reply);
+})

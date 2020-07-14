@@ -33,6 +33,7 @@ struct IVoyImageScanner
 {
 	virtual bool ReInitialize(bool forceReTraining) = 0;
 	virtual VoySearchResults AnalyzeVoyImage(const char *url) = 0;
+	virtual VoySearchResults AnalyzeVoyImage(cv::Mat query, size_t fileSize) = 0;
 };
 
 std::shared_ptr<IVoyImageScanner> MakeVoyImageScanner(const std::string &basePath);
