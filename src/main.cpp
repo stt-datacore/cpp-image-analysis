@@ -6,6 +6,7 @@
 #include <opencv2/opencv.hpp>
 
 #include "beholdhelper.h"
+#include "httpserver.h"
 #include "networkhelper.h"
 #include "voyimage.h"
 #include "wsserver.h"
@@ -33,7 +34,7 @@ int main(int argc, char **argv)
 	std::cout << "Ready!" << std::endl;
 
 	// Blocking
-	start_server([&](std::string &&message) -> std::string {
+	start_http_server([&](std::string &&message) -> std::string {
 		std::cout << "Message received: " << message << std::endl;
 
 		// TODO: there's probably a better / smarter way to implement a protocol

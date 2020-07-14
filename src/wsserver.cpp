@@ -53,7 +53,7 @@ void do_session(std::function<std::string(std::string &&)> lambda, tcp::socket &
 	}
 }
 
-bool start_server(std::function<std::string(std::string &&)> lambda, const char *addr, unsigned short port) noexcept
+bool start_websocket_server(std::function<std::string(std::string &&)> lambda, const char *addr, unsigned short port) noexcept
 {
 	try {
 		auto const address = net::ip::make_address(addr);
