@@ -6,8 +6,8 @@ namespace DataCore {
 struct MatchResult
 {
 	std::string symbol;
-	int score;
-	uint8_t starcount;
+	int score{0};
+	uint8_t starcount{0};
 
 	boost::property_tree::ptree toJson();
 };
@@ -21,7 +21,7 @@ struct SearchResults
 	MatchResult crew2;
 	MatchResult crew3;
 	std::string error;
-	int closebuttons;
+	int closebuttons{0};
 	size_t fileSize;
 
 	boost::property_tree::ptree toJson();

@@ -4,8 +4,8 @@ namespace DataCore {
 
 struct ParsedSkill
 {
-	int skillValue;
-	int primary;
+	int skillValue{0};
+	int primary{0};
 
 	boost::property_tree::ptree toJson();
 };
@@ -18,7 +18,7 @@ struct VoySearchResults
 	size_t fileSize;
 
 	bool valid{false};
-	int antimatter;
+	int antimatter{0};
 	ParsedSkill cmd;
 	ParsedSkill dip;
 	ParsedSkill eng;

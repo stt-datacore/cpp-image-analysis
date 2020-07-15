@@ -9,7 +9,6 @@
 #include <opencv2/opencv.hpp>
 #include <tesseract/baseapi.h>
 
-
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 
@@ -275,41 +274,60 @@ VoySearchResults VoyImageScanner::AnalyzeVoyImage(const char *url)
 
 VoySearchResults VoyImageScanner::AnalyzeVoyImage(cv::Mat query, size_t fileSize)
 {
+	// Some images are encoded with 2 bytes per channel, scale down for template matching to work
+	if (query.depth() == CV_16U) {
+		// convert to 1-byte
+		query.convertTo(query, CV_8U, 0.00390625);
+
+		if (query.type() == CV_8UC4) {
+			// If the image also has an alpha channel, remove it!
+			cv::Mat dst;
+			cv::cvtColor(query, dst, cv::COLOR_BGRA2BGR);
+			query = dst;
+		}
+	}
+
 	VoySearchResults result;
-
 	result.fileSize = fileSize;
+	result.input_height = query.rows;
+	result.input_width = query.cols;
 
-	// First, take the top of the image and look for the antimatter
-	cv::Mat top = SubMat(query, 0, std::max(query.rows / 5, 80), query.cols / 3, query.cols * 2 / 3);
-	cv::threshold(top, top, 100, 1, cv::THRESH_TOZERO);
+	try {
+		// First, take the top of the image and look for the antimatter
+		cv::Mat top = SubMat(query, 0, std::max(query.rows / 5, 80), query.cols / 3, query.cols * 2 / 3);
+		cv::threshold(top, top, 100, 1, cv::THRESH_TOZERO);
 
-	result.antimatter = MatchTop(top);
+		result.antimatter = MatchTop(top);
 
-	if (result.antimatter == 0) {
-		result.error = "Could not read antimatter";
+		if (result.antimatter == 0) {
+			result.error = "Could not read antimatter";
+			return result;
+		}
+
+		// Sometimes the OCR reads an extra 0 if there's a "particle" in exactly the
+		// wrong spot
+		if (result.antimatter > 8000) {
+			result.antimatter = result.antimatter / 10;
+		}
+
+		double standardScale = (double)query.cols / query.rows;
+		double scaledPercentage = query.rows * (standardScale * 1.2) / 9;
+
+		cv::Mat bottom = SubMat(query, (int)(query.rows - scaledPercentage), query.rows, query.cols / 6, query.cols * 5 / 6);
+
+		cv::threshold(bottom, bottom, 100, 1, cv::THRESH_TOZERO);
+
+		if (!MatchBottom(bottom, &result)) {
+			// Not found
+			result.error = "Could not read skill values";
+			return result;
+		}
+
+		result.valid = true;
+	} catch (std::exception const &e) {
+		result.error = std::string("Exception: ") + e.what();
 		return result;
 	}
-
-	// Sometimes the OCR reads an extra 0 if there's a "particle" in exactly the
-	// wrong spot
-	if (result.antimatter > 8000) {
-		result.antimatter = result.antimatter / 10;
-	}
-
-	double standardScale = (double)query.cols / query.rows;
-	double scaledPercentage = query.rows * (standardScale * 1.2) / 9;
-
-	cv::Mat bottom = SubMat(query, (int)(query.rows - scaledPercentage), query.rows, query.cols / 6, query.cols * 5 / 6);
-
-	cv::threshold(bottom, bottom, 100, 1, cv::THRESH_TOZERO);
-
-	if (!MatchBottom(bottom, &result)) {
-		// Not found
-		result.error = "Could not read skill values";
-		return result;
-	}
-
-	result.valid = true;
 
 	return result;
 }

@@ -128,6 +128,11 @@ class Searcher
 		std::vector<cv::DMatch> matches;
 		_matcher->match(features, matches);
 
+		if (matches.size() == 0) {
+			// No matches
+			return {"NO_MATCH", 0};
+		}
+
 		// group by image index
 		std::map<int, int> occurences;
 		for (const auto &match : matches) {
@@ -353,9 +358,21 @@ SearchResults BeholdHelper::AnalyzeBehold(const char *url)
 
 SearchResults BeholdHelper::AnalyzeBehold(cv::Mat query, size_t fileSize)
 {
+	// Some images are encoded with 2 bytes per channel, scale down for template matching to work
+	if (query.depth() == CV_16U) {
+		// convert to 1-byte
+		query.convertTo(query, CV_8U, 0.00390625);
+
+		if (query.type() == CV_8UC4) {
+			// If the image also has an alpha channel, remove it!
+			cv::Mat dst;
+			cv::cvtColor(query, dst, cv::COLOR_BGRA2BGR);
+			query = dst;
+		}
+	}
+
 	SearchResults results;
 	results.fileSize = fileSize;
-
 	results.input_height = query.rows;
 	results.input_width = query.cols;
 
