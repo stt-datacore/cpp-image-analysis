@@ -36,7 +36,7 @@ class VoyImageScanner : public IVoyImageScanner
   private:
 	int MatchTop(cv::Mat top);
 	bool MatchBottom(cv::Mat bottom, VoySearchResults *result);
-	int OCRNumber(cv::Mat skillValue, const std::string &name = "");
+	int OCRNumber(cv::Mat SkillValue, const std::string &name = "");
 	int HasStar(cv::Mat skillImg, const std::string &skillName = "");
 
 	NetworkHelper _networkHelper;
@@ -52,34 +52,6 @@ class VoyImageScanner : public IVoyImageScanner
 
 	std::string _basePath;
 };
-
-boost::property_tree::ptree ParsedSkill::toJson()
-{
-	boost::property_tree::ptree pt;
-	pt.put("SkillValue", skillValue);
-	pt.put("Primary", primary);
-
-	return pt;
-}
-
-boost::property_tree::ptree VoySearchResults::toJson()
-{
-	boost::property_tree::ptree pt;
-	pt.put("input_width", input_width);
-	pt.put("input_height", input_height);
-	pt.put("error", error);
-	pt.put("antimatter", antimatter);
-	pt.put("valid", valid);
-	pt.put("fileSize", fileSize);
-	pt.put_child("cmd", cmd.toJson());
-	pt.put_child("dip", dip.toJson());
-	pt.put_child("eng", eng.toJson());
-	pt.put_child("med", med.toJson());
-	pt.put_child("sci", sci.toJson());
-	pt.put_child("sec", sec.toJson());
-
-	return pt;
-}
 
 VoyImageScanner::~VoyImageScanner()
 {
@@ -131,10 +103,10 @@ double ScaleInvariantTemplateMatch(cv::Mat refMat, cv::Mat tplMat, cv::Point *ma
 	return maxval;
 }
 
-int VoyImageScanner::OCRNumber(cv::Mat skillValue, const std::string &name)
+int VoyImageScanner::OCRNumber(cv::Mat SkillValue, const std::string &name)
 {
-	_tesseract->SetImage((uchar *)skillValue.data, skillValue.size().width, skillValue.size().height, skillValue.channels(),
-						 (int)skillValue.step1());
+	_tesseract->SetImage((uchar *)SkillValue.data, SkillValue.size().width, SkillValue.size().height, SkillValue.channels(),
+						 (int)SkillValue.step1());
 	_tesseract->Recognize(0);
 	const char *out = _tesseract->GetUTF8Text();
 
@@ -193,36 +165,36 @@ bool VoyImageScanner::MatchBottom(cv::Mat bottom, VoySearchResults *result)
 
 	double widthScale = (double)scaledWidth / _skill_sci.cols;
 
-	result->cmd.skillValue = OCRNumber(
+	result->cmd.SkillValue = OCRNumber(
 		SubMat(bottom, maxlocCmd.y, maxlocCmd.y + height, maxlocCmd.x - (scaledWidth * 5), maxlocCmd.x - (scaledWidth / 8)), "cmd");
-	result->cmd.primary = HasStar(
+	result->cmd.Primary = HasStar(
 		SubMat(bottom, maxlocCmd.y, maxlocCmd.y + height, maxlocCmd.x + (scaledWidth * 9 / 8), maxlocCmd.x + (scaledWidth * 5 / 2)), "cmd");
 
-	result->dip.skillValue = OCRNumber(SubMat(bottom, maxlocCmd.y + height, maxlocSci.y, maxlocCmd.x - (scaledWidth * 5),
+	result->dip.SkillValue = OCRNumber(SubMat(bottom, maxlocCmd.y + height, maxlocSci.y, maxlocCmd.x - (scaledWidth * 5),
 											  (int)(maxlocCmd.x - (_skill_dip.cols - _skill_sci.cols) * widthScale)),
 									   "dip");
-	result->dip.primary = HasStar(
+	result->dip.Primary = HasStar(
 		SubMat(bottom, maxlocCmd.y + height, maxlocSci.y, maxlocCmd.x + (scaledWidth * 9 / 8), maxlocCmd.x + (scaledWidth * 5 / 2)), "dip");
 
-	result->eng.skillValue = OCRNumber(SubMat(bottom, maxlocSci.y, maxlocSci.y + height, maxlocCmd.x - (scaledWidth * 5),
+	result->eng.SkillValue = OCRNumber(SubMat(bottom, maxlocSci.y, maxlocSci.y + height, maxlocCmd.x - (scaledWidth * 5),
 											  (int)(maxlocCmd.x - (_skill_eng.cols - _skill_sci.cols) * widthScale)),
 									   "eng");
-	result->eng.primary = HasStar(
+	result->eng.Primary = HasStar(
 		SubMat(bottom, maxlocSci.y, maxlocSci.y + height, maxlocCmd.x + (scaledWidth * 9 / 8), maxlocCmd.x + (scaledWidth * 5 / 2)), "eng");
 
-	result->sec.skillValue = OCRNumber(
+	result->sec.SkillValue = OCRNumber(
 		SubMat(bottom, maxlocCmd.y, maxlocCmd.y + height, (int)(maxlocSci.x + scaledWidth * 1.4), maxlocSci.x + (scaledWidth * 6)), "sec");
-	result->sec.primary = HasStar(
+	result->sec.Primary = HasStar(
 		SubMat(bottom, maxlocCmd.y, maxlocCmd.y + height, maxlocSci.x - (scaledWidth * 12 / 8), maxlocSci.x - (scaledWidth / 6)), "sec");
 
-	result->med.skillValue = OCRNumber(
+	result->med.SkillValue = OCRNumber(
 		SubMat(bottom, maxlocCmd.y + height, maxlocSci.y, (int)(maxlocSci.x + scaledWidth * 1.4), maxlocSci.x + (scaledWidth * 6)), "med");
-	result->med.primary = HasStar(
+	result->med.Primary = HasStar(
 		SubMat(bottom, maxlocCmd.y + height, maxlocSci.y, maxlocSci.x - (scaledWidth * 12 / 8), maxlocSci.x - (scaledWidth / 6)), "med");
 
-	result->sci.skillValue = OCRNumber(
+	result->sci.SkillValue = OCRNumber(
 		SubMat(bottom, maxlocSci.y, maxlocSci.y + height, (int)(maxlocSci.x + scaledWidth * 1.4), maxlocSci.x + (scaledWidth * 6)), "sci");
-	result->sci.primary = HasStar(
+	result->sci.Primary = HasStar(
 		SubMat(bottom, maxlocSci.y, maxlocSci.y + height, maxlocSci.x - (scaledWidth * 12 / 8), maxlocSci.x - (scaledWidth / 6)), "sci");
 
 	return true;

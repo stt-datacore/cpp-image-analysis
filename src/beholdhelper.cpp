@@ -226,32 +226,6 @@ class Trainer
 	std::string _basePath;
 };
 
-boost::property_tree::ptree MatchResult::toJson()
-{
-	boost::property_tree::ptree pt;
-	pt.put("symbol", symbol);
-	pt.put("score", score);
-	pt.put("stars", starcount);
-
-	return pt;
-}
-
-boost::property_tree::ptree SearchResults::toJson()
-{
-	boost::property_tree::ptree pt;
-	pt.put("input_width", input_width);
-	pt.put("input_height", input_height);
-	pt.put_child("top", top.toJson());
-	pt.put_child("crew1", crew1.toJson());
-	pt.put_child("crew2", crew2.toJson());
-	pt.put_child("crew3", crew3.toJson());
-	pt.put("error", error);
-	pt.put("closebuttons", closebuttons);
-	pt.put("fileSize", fileSize);
-
-	return pt;
-}
-
 class BeholdHelper : public IBeholdHelper
 {
   public:
