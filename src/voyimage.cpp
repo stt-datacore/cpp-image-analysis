@@ -9,9 +9,6 @@
 #include <opencv2/opencv.hpp>
 #include <tesseract/baseapi.h>
 
-#include <boost/property_tree/json_parser.hpp>
-#include <boost/property_tree/ptree.hpp>
-
 #include "networkhelper.h"
 #include "utils.h"
 #include "voyimage.h"

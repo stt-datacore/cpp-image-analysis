@@ -1,0 +1,4 @@
+.vs/
+out/
+build/
+train/*.bin

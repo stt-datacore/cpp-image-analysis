@@ -3,7 +3,7 @@ project(DataCoreImServer)
 
 set(CMAKE_CXX_STANDARD 17)
 
-#sudo apt-get install cmake build-essential libboost-all-dev libopencv-dev openssl libboost-all-dev libtesseract-dev libssl-dev
+#sudo apt-get install cmake build-essential libboost-all-dev libopencv-dev openssl libtesseract-dev libssl-dev
 
 if(WIN32)
 	set(CMAKE_CXX_FLAGS_RELEASE "/MT")
@@ -24,12 +24,19 @@ else()
 endif()
 
 find_package(OpenCV CONFIG REQUIRED)
-find_package(Boost COMPONENTS system REQUIRED)
 find_package(OpenSSL REQUIRED)
+
+if (NOT DEFINED DC_BOOST_SRC)
+	find_package(Boost COMPONENTS system REQUIRED)
+endif()
 
 add_executable(imserver src/main.cpp src/networkhelper.cpp src/wsserver.cpp src/beholdhelper.cpp src/voyimage.cpp src/opencv_surf/surf.cpp src/utils.cpp src/httpserver.cpp)
 
-target_link_libraries(imserver PRIVATE opencv_core opencv_imgcodecs opencv_features2d Boost::system OpenSSL::SSL OpenSSL::Crypto)
+target_link_libraries(imserver PRIVATE opencv_core opencv_imgcodecs opencv_features2d OpenSSL::SSL OpenSSL::Crypto)
+
+if (NOT DEFINED DC_BOOST_SRC)
+	target_link_libraries(imserver PRIVATE Boost::system)
+endif()
 
 if(WIN32)
 	target_link_libraries(imserver PRIVATE libtesseract)
@@ -37,4 +44,8 @@ if(WIN32)
 	target_compile_definitions(imserver PRIVATE _WIN32_WINNT=0x0601)
 else()
 	target_link_libraries(imserver PRIVATE pthread ${TESSERACT_LIBRARIES} ${LEPTONICA_LIBRARIES})
+endif()
+
+if (DEFINED DC_BOOST_SRC)
+	target_include_directories(imserver PRIVATE ${DC_BOOST_SRC})
 endif()

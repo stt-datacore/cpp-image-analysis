@@ -1,18 +1,17 @@
 #include <algorithm>
 #include <filesystem>
 #include <iostream>
-#include <map>
 #include <sstream>
+#include <fstream>
+#include <map>
 #include <vector>
 
-#include <boost/property_tree/json_parser.hpp>
 #include <opencv2/opencv.hpp>
 
 #include "beholdhelper.h"
 #include "networkhelper.h"
 #include "opencv_surf/surf.h"
 #include "utils.h"
-
 
 namespace fs = std::filesystem;
 
@@ -296,14 +295,13 @@ bool BeholdHelper::ReInitialize(bool forceReTraining)
 	cv::Mat tr = _trainer.Read("behold_title");
 	_searcher.Add(tr, "behold_title");
 
-	boost::property_tree::ptree jsontree;
-	boost::property_tree::read_json(fs::path(_basePath + "data/assets.json").make_preferred().string(), jsontree);
+	std::ifstream assetStream(fs::path(_basePath + "data/assets.json").make_preferred().string());
+	nlohmann::json j;
+	assetStream >> j;
 
-	for (const boost::property_tree::ptree::value_type &asset : jsontree.get_child("assets")) {
-		const std::string &symbol = asset.first;
-		const std::string &url = asset.second.data();
-
-		// std::cout << "Reading " << symbol << "..." << std::endl;
+	for (auto &[symbol, value] : j["assets"].items()) {
+		std::string url = value.get<std::string>();
+		//std::cout << "Reading " << symbol << "..." << std::endl;
 
 		if (!_trainer.Train(url.c_str(), symbol.c_str(), forceReTraining))
 			return false;

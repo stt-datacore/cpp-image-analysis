@@ -1,4 +1,5 @@
 .vs/
 out/
+build/
 train/*.bin
 node_modules/
