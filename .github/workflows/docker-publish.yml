@@ -10,11 +10,10 @@ on:
   pull_request:
 
 env:
-  # TODO: Change variable to your image's name.
   IMAGE_NAME: dcimageanalysis
 
 jobs:
-  # Run tests.
+  # TODO: actually add tests
   # See also https://docs.docker.com/docker-hub/builds/automated-testing/
   test:
     runs-on: ubuntu-latest

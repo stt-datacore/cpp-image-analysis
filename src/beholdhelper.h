@@ -65,7 +65,7 @@ inline void from_json(const nlohmann::json &j, SearchResults &s)
 
 struct IBeholdHelper
 {
-	virtual bool ReInitialize(bool forceReTraining) = 0;
+	virtual bool ReInitialize(bool forceReTraining, const std::string &jsonpath, const std::string &asseturl) = 0;
 	virtual SearchResults AnalyzeBehold(const char *url) = 0;
 	virtual SearchResults AnalyzeBehold(cv::Mat query, size_t fileSize) = 0;
 };

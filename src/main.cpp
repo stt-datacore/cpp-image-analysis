@@ -9,25 +9,42 @@
 #include "wsserver.h"
 
 #include "json.hpp"
+#include "args.h"
 
 using namespace DataCore;
 
 int main(int argc, char **argv)
 {
-	std::string basePath{"../../../"};
-	if (argc > 1) {
-		basePath = argv[1];
+	args::ArgumentParser parser("DataCore Image Analysis Service");
+	args::HelpFlag help(parser, "help", "Display this help menu", {'h', "help"});
+	args::Flag forceReTrain(parser, "force", "Force redownloading and reparsing all assets", {'f', "force"}, false);
+	args::ValueFlag<std::string> basePath(parser, "trainpath", "Pathname for folder where train data is stored", {'t', "trainpath"},
+										  "../../../");
+	args::ValueFlag<std::string> asseturl(parser, "asseturl", "The full URL of the DataCore asset server", {'a', "asseturl"},
+										  "https://assets.datacore.app/");
+	args::ValueFlag<std::string> jsonpath(parser, "jsonpath", "Pathname to website folder where crew.json can be found", {'j', "jsonpath"},
+										  "../../../../website/static/structured/");
+
+	try {
+		parser.ParseCLI(argc, argv);
+	} catch (const args::Help &) {
+		std::cout << parser;
+		return 0;
+	} catch (const args::ParseError &e) {
+		std::cerr << e.what() << std::endl;
+		std::cerr << parser;
+		return 1;
 	}
 
 	NetworkHelper networkHelper;
-	std::shared_ptr<IBeholdHelper> beholdHelper = MakeBeholdHelper(basePath);
-	std::shared_ptr<IVoyImageScanner> voyImageScanner = MakeVoyImageScanner(basePath);
+	std::shared_ptr<IBeholdHelper> beholdHelper = MakeBeholdHelper(args::get(basePath));
+	std::shared_ptr<IVoyImageScanner> voyImageScanner = MakeVoyImageScanner(args::get(basePath));
 
 	// Load all matrices from disk
-	beholdHelper->ReInitialize(false);
+	beholdHelper->ReInitialize(args::get(forceReTrain), args::get(jsonpath), args::get(asseturl));
 
 	// Initialize the Tesseract OCR engine
-	voyImageScanner->ReInitialize(false);
+	voyImageScanner->ReInitialize(args::get(forceReTrain));
 
 	std::cout << "Ready!" << std::endl;
 
@@ -35,16 +52,15 @@ int main(int argc, char **argv)
 	start_http_server([&](std::string &&message) -> std::string {
 		std::cout << "Message received: " << message << std::endl;
 
-		// TODO: there's probably a better / smarter way to implement a protocol
-		// handler
+		// TODO: there's probably a better / smarter way to implement a protocol handler
 		nlohmann::json j;
 		if (message.find("REINIT") == 0) {
-			// Reinitialize by reloading assets.json from the configured path
-			beholdHelper->ReInitialize(false);
+			// Reinitialize by reloading the asset list from the configured path
+			beholdHelper->ReInitialize(false, args::get(jsonpath), args::get(asseturl));
 			j["success"] = true;
 		} else if (message.find("FORCEREINIT") == 0) {
 			// Force reinitialize by re-downloading and re-parsing all assets
-			beholdHelper->ReInitialize(true);
+			beholdHelper->ReInitialize(true, args::get(jsonpath), args::get(asseturl));
 			j["success"] = true;
 		} else if (message.find("BEHOLD") == 0) {
 			// Run the behold analyzer
@@ -54,7 +70,6 @@ int main(int argc, char **argv)
 			j["beholdUrl"] = beholdUrl;
 			j["results"] = results;
 			j["success"] = true;
-
 		} else if (message.find("VOYIMAGE") == 0) {
 			// Run the behold analyzer
 			std::string voyImageUrl = message.substr(8);

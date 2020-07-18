@@ -232,7 +232,7 @@ class BeholdHelper : public IBeholdHelper
 	{
 	}
 
-	bool ReInitialize(bool forceReTraining) override;
+	bool ReInitialize(bool forceReTraining, const std::string &jsonpath, const std::string &asseturl) override;
 	SearchResults AnalyzeBehold(const char *url) override;
 	SearchResults AnalyzeBehold(cv::Mat query, size_t fileSize) override;
 
@@ -282,7 +282,7 @@ int BeholdHelper::CountFullStars(cv::Mat refMat, cv::Mat tplMat, double threshol
 	}
 }
 
-bool BeholdHelper::ReInitialize(bool forceReTraining)
+bool BeholdHelper::ReInitialize(bool forceReTraining, const std::string &jsonpath, const std::string &asseturl)
 {
 	_starFull = cv::imread(fs::path(_basePath + "data/starfull.png").make_preferred().string());
 	_closeButton = cv::imread(fs::path(_basePath + "data/closeButton.png").make_preferred().string());
@@ -295,19 +295,22 @@ bool BeholdHelper::ReInitialize(bool forceReTraining)
 	cv::Mat tr = _trainer.Read("behold_title");
 	_searcher.Add(tr, "behold_title");
 
-	std::ifstream assetStream(fs::path(_basePath + "data/assets.json").make_preferred().string());
+	std::ifstream assetStream(fs::path(jsonpath + "crew.json").make_preferred().string());
 	nlohmann::json j;
 	assetStream >> j;
 
-	for (auto &[symbol, value] : j["assets"].items()) {
-		std::string url = value.get<std::string>();
-		//std::cout << "Reading " << symbol << "..." << std::endl;
+	for (auto &element : j) {
+		if (element["max_rarity"].get<int>() >= 4) {
+			std::string symbol = element["symbol"].get<std::string>();
+			std::string url = asseturl + element["imageUrlFullBody"].get<std::string>();
+			// std::cout << "Reading " << symbol << "..." << std::endl;
 
-		if (!_trainer.Train(url.c_str(), symbol.c_str(), forceReTraining))
-			return false;
+			if (!_trainer.Train(url.c_str(), symbol.c_str(), forceReTraining))
+				return false;
 
-		cv::Mat tr = _trainer.Read(symbol.c_str());
-		_searcher.Add(tr, symbol.c_str());
+			cv::Mat tr = _trainer.Read(symbol.c_str());
+			_searcher.Add(tr, symbol.c_str());
+		}
 	}
 
 	return true;
