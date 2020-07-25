@@ -337,13 +337,13 @@ SearchResults BeholdHelper::AnalyzeBehold(cv::Mat query, size_t fileSize)
 	if (query.depth() == CV_16U) {
 		// convert to 1-byte
 		query.convertTo(query, CV_8U, 0.00390625);
+	}
 
-		if (query.type() == CV_8UC4) {
-			// If the image also has an alpha channel, remove it!
-			cv::Mat dst;
-			cv::cvtColor(query, dst, cv::COLOR_BGRA2BGR);
-			query = dst;
-		}
+	// If the image has an alpha channel, remove it
+	if (query.type() == CV_8UC4) {
+		cv::Mat dst;
+		cv::cvtColor(query, dst, cv::COLOR_BGRA2BGR);
+		query = dst;
 	}
 
 	SearchResults results;
@@ -355,6 +355,11 @@ SearchResults BeholdHelper::AnalyzeBehold(cv::Mat query, size_t fileSize)
 	if (top.empty()) {
 		results.error = "Top row was empty";
 		return results;
+	}
+
+	if (top.rows < 48) {
+		const auto topScale = 1.5;
+		cv::resize(top, top, cv::Size((int)(top.cols * topScale), (int)(top.rows * topScale)), 0, 0, cv::INTER_AREA);
 	}
 
 	results.top = _searcher.Match(top);

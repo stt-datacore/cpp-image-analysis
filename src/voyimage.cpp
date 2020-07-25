@@ -247,13 +247,13 @@ VoySearchResults VoyImageScanner::AnalyzeVoyImage(cv::Mat query, size_t fileSize
 	if (query.depth() == CV_16U) {
 		// convert to 1-byte
 		query.convertTo(query, CV_8U, 0.00390625);
+	}
 
-		if (query.type() == CV_8UC4) {
-			// If the image also has an alpha channel, remove it!
-			cv::Mat dst;
-			cv::cvtColor(query, dst, cv::COLOR_BGRA2BGR);
-			query = dst;
-		}
+	// If the image has an alpha channel, remove it
+	if (query.type() == CV_8UC4) {
+		cv::Mat dst;
+		cv::cvtColor(query, dst, cv::COLOR_BGRA2BGR);
+		query = dst;
 	}
 
 	VoySearchResults result;
