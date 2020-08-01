@@ -14,7 +14,7 @@ struct MatchResult
 
 inline void to_json(nlohmann::json &j, const MatchResult &m)
 {
-	j = nlohmann::json{{"symbol", m.symbol}, {"score", m.score}, {"starcount", m.starcount}};
+	j = nlohmann::json{{"symbol", m.symbol}, {"score", m.score}, {"stars", m.starcount}};
 }
 
 inline void from_json(const nlohmann::json &j, MatchResult &m)

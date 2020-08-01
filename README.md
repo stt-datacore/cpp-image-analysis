@@ -1,9 +1,8 @@
 # cpp-image-analysis
-(PROTOTYPE) C++ version of the image analysis component
+Image analysis component for the DataCore bot
 
-Doesn't do much yet, but it sort-of works for beholds and cuts the RAM needs to 1/5 (from 2.5Gb to < 500Mb).
+Cuts the memory usage to 1/5 (from 2.5Gb to < 500Mb) compared with the dotnet version.
 
 TODOs:
-- Voyage screenshots (needs tesseract OCR)
-- WebSocket server to actually process messages
+- Improve behold recognition with OCR (need to retrain tesseract OCR with Eurostile.ttf on alphanumeric characters)
 - Error proofing, tests, documentation
