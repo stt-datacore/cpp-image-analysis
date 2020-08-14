@@ -222,8 +222,8 @@ int VoyImageScanner::MatchTop(cv::Mat top)
 		return 0;
 	}
 
-	top = SubMat(top, maxloc.y, maxloc.y + height, maxloc.x + scaledWidth, maxloc.x + (int)(scaledWidth * 6.75));
-	// imwrite("temp.png", top);
+	top = SubMat(top, maxloc.y, maxloc.y + height, maxloc.x + (int)(scaledWidth * 1.05), maxloc.x + (int)(scaledWidth * 6.75));
+	imwrite("temp.png", top);
 
 	return OCRNumber(top);
 }
