@@ -17,6 +17,7 @@ RUN apk update && apk upgrade && apk --no-cache add \
   make \
   unzip \
   tesseract-ocr-dev \
+  tesseract-ocr \
   leptonica-dev \
   openssl-dev \
   linux-headers
@@ -41,12 +42,10 @@ RUN mkdir /usr/src && cd /usr/src && \
 
 WORKDIR /usr/src/dcimageanalysis
 COPY . .
-RUN apk --no-cache add pkgconfig tesseract-ocr && \
-    cd /usr/src && \
+RUN cd /usr/src && \
     wget https://dl.bintray.com/boostorg/release/1.73.0/source/boost_1_73_0.zip && \
     unzip boost_1_73_0.zip && rm boost_1_73_0.zip && mv boost_1_73_0 boost && \
     cd /usr/src/dcimageanalysis && \
     mkdir build && cd build && cmake -DDC_BOOST_SRC=/usr/src/boost .. && make -j$(nproc) && cd .. && rm -rf /usr/src/boost
 
-#docker build --tag dcimageanalysis:1.8 .
-#docker run --publish 5001:5001 -it --entrypoint /bin/bash dcimageanalysis:1.0
+ENTRYPOINT [ "/usr/src/dcimageanalysis/build/imserver" ]
