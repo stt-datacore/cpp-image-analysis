@@ -2,7 +2,7 @@ FROM alpine:3.12
 
 ENV LANG=C.UTF-8
 
-EXPOSE 5001
+EXPOSE 5000
 
 # Install required packages
 RUN apk update && apk upgrade && apk --no-cache add \

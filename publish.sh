@@ -29,7 +29,7 @@ docker rm DCImageAnalysis
 
 docker run -d --name=DCImageAnalysis \
     --restart unless-stopped \
-    --publish 5001:5001 \
+    --publish 5000:5000 \
     --mount type=bind,source="$SITE_PATH",target=/sitedata \
     --mount type=bind,source="$GIT_PATH",target=/traindata \
     stt-datacore/cpp-image-analysis:latest \
