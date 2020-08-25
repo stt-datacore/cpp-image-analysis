@@ -1,0 +1,20 @@
+name: DataCore CppImageAnalysis CI
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build project
+      run: docker build . --file Dockerfile
+    - name: Publish to server via ssh
+      run: |
+        sudo apt-get update -y -qq
+        sudo apt-get install -y -qq sshpass rsync
+        mkdir -p ~/.ssh
+        touch ~/.ssh/known_hosts
+        ssh-keyscan ${{ secrets.CI_HOST }} >> ~/.ssh/known_hosts
+        sshpass -p "${{ secrets.CI_PASS }}" ssh ${{ secrets.CI_USER }}@${{ secrets.CI_HOST }} '~/prod/cpp-image-analysis/publish.sh'
