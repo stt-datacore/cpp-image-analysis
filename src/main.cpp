@@ -1,4 +1,5 @@
 #include <iostream>
+#include <chrono> 
 
 #include <opencv2/opencv.hpp>
 
@@ -83,6 +84,8 @@ int main(int argc, char **argv)
 			// Run both analyzers
 			std::string url = message.substr(4);
 
+			auto start = std::chrono::high_resolution_clock::now();
+
 			size_t fileSize;
 			cv::Mat query;
 			networkHelper.downloadUrl(url, [&](std::vector<uint8_t> &&v) -> bool {
@@ -94,10 +97,13 @@ int main(int argc, char **argv)
 			VoySearchResults voyResult = voyImageScanner->AnalyzeVoyImage(query, fileSize);
 			SearchResults beholdResult = beholdHelper->AnalyzeBehold(query, fileSize);
 
+			auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start);
+
 			j["url"] = url;
 			j["beholdResult"] = beholdResult;
 			j["voyResult"] = voyResult;
 			j["success"] = true;
+			j["durationMs"] = duration.count();
 		} else {
 			// unknown message
 			j["success"] = false;
