@@ -44,6 +44,7 @@ if(WIN32)
 	target_compile_definitions(imserver PRIVATE _WIN32_WINNT=0x0601)
 else()
 	target_link_libraries(imserver PRIVATE pthread ${TESSERACT_LIBRARIES} ${LEPTONICA_LIBRARIES})
+	target_compile_options(imserver PRIVATE "-static-libgcc")
 endif()
 
 if (DEFINED DC_BOOST_SRC)
