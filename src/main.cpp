@@ -19,8 +19,10 @@ int main(int argc, char **argv)
 	args::ArgumentParser parser("DataCore Image Analysis Service");
 	args::HelpFlag help(parser, "help", "Display this help menu", {'h', "help"});
 	args::Flag forceReTrain(parser, "force", "Force redownloading and reparsing all assets", {'f', "force"}, false);
-	args::ValueFlag<std::string> basePath(parser, "trainpath", "Pathname for folder where train data is stored", {'t', "trainpath"},
-										  "../../../");
+	args::ValueFlag<std::string> trainPath(parser, "trainpath", "Pathname for folder where train data is stored", {'t', "trainpath"},
+										  "../../../train");
+	args::ValueFlag<std::string> dataPath(parser, "datapath", "Pathname for folder where input data is stored", {'d', "datapath"},
+										  "../../../data");
 	args::ValueFlag<std::string> asseturl(parser, "asseturl", "The full URL of the DataCore asset server", {'a', "asseturl"},
 										  "https://assets.datacore.app/");
 	args::ValueFlag<std::string> jsonpath(parser, "jsonpath", "Pathname to website folder where crew.json can be found", {'j', "jsonpath"},
@@ -38,8 +40,8 @@ int main(int argc, char **argv)
 	}
 
 	NetworkHelper networkHelper;
-	std::shared_ptr<IBeholdHelper> beholdHelper = MakeBeholdHelper(args::get(basePath));
-	std::shared_ptr<IVoyImageScanner> voyImageScanner = MakeVoyImageScanner(args::get(basePath));
+	std::shared_ptr<IBeholdHelper> beholdHelper = MakeBeholdHelper(args::get(trainPath), args::get(dataPath));
+	std::shared_ptr<IVoyImageScanner> voyImageScanner = MakeVoyImageScanner(args::get(dataPath));
 
 	// Load all matrices from disk
 	beholdHelper->ReInitialize(args::get(forceReTrain), args::get(jsonpath), args::get(asseturl));

@@ -77,6 +77,6 @@ struct IVoyImageScanner
 	virtual VoySearchResults AnalyzeVoyImage(cv::Mat query, size_t fileSize) = 0;
 };
 
-std::shared_ptr<IVoyImageScanner> MakeVoyImageScanner(const std::string &basePath);
+std::shared_ptr<IVoyImageScanner> MakeVoyImageScanner(const std::string &dataPath);
 
 } // namespace DataCore

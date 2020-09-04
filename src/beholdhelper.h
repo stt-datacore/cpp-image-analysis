@@ -70,6 +70,6 @@ struct IBeholdHelper
 	virtual SearchResults AnalyzeBehold(cv::Mat query, size_t fileSize) = 0;
 };
 
-std::shared_ptr<IBeholdHelper> MakeBeholdHelper(const std::string &basePath);
+std::shared_ptr<IBeholdHelper> MakeBeholdHelper(const std::string &trainPath, const std::string &dataPath);
 
 } // namespace DataCore

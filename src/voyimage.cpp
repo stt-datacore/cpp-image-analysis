@@ -20,7 +20,7 @@ namespace DataCore {
 class VoyImageScanner : public IVoyImageScanner
 {
   public:
-	VoyImageScanner(const char *basePath) : _basePath(basePath)
+	VoyImageScanner(const char *dataPath) : _dataPath(dataPath)
 	{
 	}
 
@@ -47,7 +47,7 @@ class VoyImageScanner : public IVoyImageScanner
 	cv::Mat _skill_sec;
 	cv::Mat _antimatter;
 
-	std::string _basePath;
+	std::string _dataPath;
 };
 
 VoyImageScanner::~VoyImageScanner()
@@ -60,17 +60,17 @@ VoyImageScanner::~VoyImageScanner()
 
 bool VoyImageScanner::ReInitialize(bool forceReTraining)
 {
-	_skill_cmd = cv::imread(fs::path(_basePath + "data/cmd.png").make_preferred().string());
-	_skill_dip = cv::imread(fs::path(_basePath + "data/dip.png").make_preferred().string());
-	_skill_eng = cv::imread(fs::path(_basePath + "data/eng.png").make_preferred().string());
-	_skill_med = cv::imread(fs::path(_basePath + "data/med.png").make_preferred().string());
-	_skill_sci = cv::imread(fs::path(_basePath + "data/sci.png").make_preferred().string());
-	_skill_sec = cv::imread(fs::path(_basePath + "data/sec.png").make_preferred().string());
-	_antimatter = cv::imread(fs::path(_basePath + "data/antimatter.png").make_preferred().string());
+	_skill_cmd = cv::imread(fs::path(_dataPath + "cmd.png").make_preferred().string());
+	_skill_dip = cv::imread(fs::path(_dataPath + "dip.png").make_preferred().string());
+	_skill_eng = cv::imread(fs::path(_dataPath + "eng.png").make_preferred().string());
+	_skill_med = cv::imread(fs::path(_dataPath + "med.png").make_preferred().string());
+	_skill_sci = cv::imread(fs::path(_dataPath + "sci.png").make_preferred().string());
+	_skill_sec = cv::imread(fs::path(_dataPath + "sec.png").make_preferred().string());
+	_antimatter = cv::imread(fs::path(_dataPath + "antimatter.png").make_preferred().string());
 
 	_tesseract = std::make_shared<tesseract::TessBaseAPI>();
 
-	if (_tesseract->Init(fs::path(_basePath + "data/tessdata").make_preferred().string().c_str(), "Eurostile")) {
+	if (_tesseract->Init(fs::path(_dataPath + "tessdata").make_preferred().string().c_str(), "Eurostile")) {
 		// "Could not initialize tesseract"
 		return false;
 	}
@@ -301,9 +301,9 @@ VoySearchResults VoyImageScanner::AnalyzeVoyImage(cv::Mat query, size_t fileSize
 	return result;
 }
 
-std::shared_ptr<IVoyImageScanner> MakeVoyImageScanner(const std::string &basePath)
+std::shared_ptr<IVoyImageScanner> MakeVoyImageScanner(const std::string &dataPath)
 {
-	return std::make_shared<VoyImageScanner>(basePath.c_str());
+	return std::make_shared<VoyImageScanner>(dataPath.c_str());
 }
 
 } // namespace DataCore

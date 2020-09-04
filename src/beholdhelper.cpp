@@ -157,14 +157,14 @@ class Searcher
 class Trainer
 {
   public:
-	Trainer(const char *basePath) : _basePath(basePath)
+	Trainer(const char *trainPath) : _trainPath(trainPath)
 	{
 	}
 
 	cv::Mat Read(const char *symbol)
 	{
 		std::stringstream outPath;
-		outPath << _basePath << "train/" << symbol << ".bin";
+		outPath << _trainPath << symbol << ".bin";
 
 		cv::Mat result = matread(fs::path(outPath.str()).make_preferred().string());
 
@@ -174,7 +174,7 @@ class Trainer
 	bool Train(const char *imgUrl, const char *symbol, bool forceReTraining)
 	{
 		std::stringstream outPath;
-		outPath << _basePath << "train/" << symbol << ".bin";
+		outPath << _trainPath << symbol << ".bin";
 
 		// if file already exists, bail
 		if (!forceReTraining && fileExists(fs::path(outPath.str()).make_preferred().string()))
@@ -185,21 +185,10 @@ class Trainer
 		return TrainInternal(image, symbol, forceReTraining);
 	}
 
-	bool TrainFile(const char *imgPath, const char *symbol, bool forceReTraining)
-	{
-		std::stringstream outPath;
-		outPath << _basePath << imgPath;
-
-		cv::Mat image = cv::imread(fs::path(outPath.str()).make_preferred().string());
-
-		return TrainInternal(image, symbol, forceReTraining);
-	}
-
-  private:
 	bool TrainInternal(cv::Mat image, const char *symbol, bool forceReTraining)
 	{
 		std::stringstream outPath;
-		outPath << _basePath << "train/" << symbol << ".bin";
+		outPath << _trainPath << symbol << ".bin";
 
 		// if file already exists, bail
 		if (!forceReTraining && fileExists(fs::path(outPath.str()).make_preferred().string()))
@@ -222,13 +211,13 @@ class Trainer
 
   private:
 	Descriptor _descriptor;
-	std::string _basePath;
+	std::string _trainPath;
 };
 
 class BeholdHelper : public IBeholdHelper
 {
   public:
-	BeholdHelper(const char *basePath) : _basePath(basePath), _trainer(basePath)
+	BeholdHelper(const char *trainPath, const char *dataPath) : _dataPath(dataPath), _trainer(trainPath)
 	{
 	}
 
@@ -245,8 +234,9 @@ class BeholdHelper : public IBeholdHelper
 
 	cv::Mat _starFull;
 	cv::Mat _closeButton;
+	cv::Mat _beholdTitle;
 
-	std::string _basePath;
+	std::string _dataPath;
 };
 
 int BeholdHelper::CountFullStars(cv::Mat refMat, cv::Mat tplMat, double threshold) noexcept
@@ -284,12 +274,13 @@ int BeholdHelper::CountFullStars(cv::Mat refMat, cv::Mat tplMat, double threshol
 
 bool BeholdHelper::ReInitialize(bool forceReTraining, const std::string &jsonpath, const std::string &asseturl)
 {
-	_starFull = cv::imread(fs::path(_basePath + "data/starfull.png").make_preferred().string());
-	_closeButton = cv::imread(fs::path(_basePath + "data/closeButton.png").make_preferred().string());
+	_starFull = cv::imread(fs::path(_dataPath + "starfull.png").make_preferred().string());
+	_closeButton = cv::imread(fs::path(_dataPath + "closeButton.png").make_preferred().string());
+	_beholdTitle = cv::imread(fs::path(_dataPath + "behold_title.png").make_preferred().string());
 
 	_searcher.Clear();
 
-	if (!_trainer.TrainFile("data/behold_title.png", "behold_title", forceReTraining))
+	if (!_trainer.TrainInternal(_beholdTitle, "behold_title", forceReTraining))
 		return false;
 
 	cv::Mat tr = _trainer.Read("behold_title");
@@ -420,9 +411,9 @@ SearchResults BeholdHelper::AnalyzeBehold(cv::Mat query, size_t fileSize)
 	return results;
 }
 
-std::shared_ptr<IBeholdHelper> MakeBeholdHelper(const std::string &basePath)
+std::shared_ptr<IBeholdHelper> MakeBeholdHelper(const std::string &trainPath, const std::string &dataPath)
 {
-	return std::make_shared<BeholdHelper>(basePath.c_str());
+	return std::make_shared<BeholdHelper>(trainPath.c_str(), dataPath.c_str());
 }
 
 } // namespace DataCore

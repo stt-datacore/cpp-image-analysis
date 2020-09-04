@@ -34,6 +34,7 @@ docker run -d --name=DCImageAnalysis \
     --mount type=bind,source="$GIT_PATH",target=/traindata \
     stt-datacore/cpp-image-analysis:latest \
     --asseturl=https://assets.datacore.app/ \
-    --trainpath=/traindata/ \
+    --trainpath=/traindata/train \
+    --datapath=/traindata/data \
     --jsonpath=/sitedata/static/structured/
 
