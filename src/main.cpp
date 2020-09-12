@@ -20,9 +20,9 @@ int main(int argc, char **argv)
 	args::HelpFlag help(parser, "help", "Display this help menu", {'h', "help"});
 	args::Flag forceReTrain(parser, "force", "Force redownloading and reparsing all assets", {'f', "force"}, false);
 	args::ValueFlag<std::string> trainPath(parser, "trainpath", "Pathname for folder where train data is stored", {'t', "trainpath"},
-										  "../../../train");
+										  "../../../train/");
 	args::ValueFlag<std::string> dataPath(parser, "datapath", "Pathname for folder where input data is stored", {'d', "datapath"},
-										  "../../../data");
+										  "../../../data/");
 	args::ValueFlag<std::string> asseturl(parser, "asseturl", "The full URL of the DataCore asset server", {'a', "asseturl"},
 										  "https://assets.datacore.app/");
 	args::ValueFlag<std::string> jsonpath(parser, "jsonpath", "Pathname to website folder where crew.json can be found", {'j', "jsonpath"},

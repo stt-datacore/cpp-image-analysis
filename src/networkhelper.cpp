@@ -81,7 +81,11 @@ bool NetworkHelper::performRequest(boost::beast::http::request<boost::beast::htt
 
 		// Gracefully close the stream
 		boost::system::error_code ec;
-		stream.shutdown(ec);
+
+		// For graceful close, this should be `stream.shutdown(ec);`, but some servers never shut down their SSL connections
+		// so we end up blocking for 10+ minutes (or however long the system socket library blocks). Just terminate the TCP connection instead.
+		stream.lowest_layer().close(ec);
+
 		if (ec == boost::asio::error::eof) {
 			// Rationale:
 			// http://stackoverflow.com/questions/25587403/boost-asio-ssl-async-shutdown-always-finishes-with-an-error
