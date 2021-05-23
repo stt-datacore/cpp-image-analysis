@@ -41,7 +41,7 @@ RUN apk add --no-cache --virtual .build \
   && \
   make -j$(nproc) && make install && rm -rf /usr/src/opencv-4.3.0 && \
   cd /usr/src && \
-    wget https://dl.bintray.com/boostorg/release/1.73.0/source/boost_1_73_0.zip && \
+    wget https://boostorg.jfrog.io/artifactory/main/release/1.73.0/source/boost_1_73_0.zip && \
     unzip -q boost_1_73_0.zip && rm boost_1_73_0.zip && mv boost_1_73_0 boost && \
     cd /usr/src/dcimageanalysis && \
     mkdir build && cd build && cmake -DDC_BOOST_SRC=/usr/src/boost .. && make -j$(nproc) && cd .. && rm -rf /usr/src/boost && \
