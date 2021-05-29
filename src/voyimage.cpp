@@ -104,6 +104,7 @@ int VoyImageScanner::OCRNumber(cv::Mat SkillValue, const std::string &name)
 {
 	_tesseract->SetImage((uchar *)SkillValue.data, SkillValue.size().width, SkillValue.size().height, SkillValue.channels(),
 						 (int)SkillValue.step1());
+	_tesseract->SetSourceResolution(70);
 	_tesseract->Recognize(0);
 	const char *out = _tesseract->GetUTF8Text();
 
