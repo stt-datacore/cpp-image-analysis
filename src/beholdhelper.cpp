@@ -294,7 +294,7 @@ bool BeholdHelper::ReInitialize(bool forceReTraining, const std::string &jsonpat
 		if (element["max_rarity"].get<int>() >= 4) {
 			std::string symbol = element["symbol"].get<std::string>();
 			std::string url = asseturl + element["imageUrlFullBody"].get<std::string>();
-			// std::cout << "Reading " << symbol << "..." << std::endl;
+			std::cout << "Reading " << symbol << "..." << std::endl;
 
 			if (!_trainer.Train(url.c_str(), symbol.c_str(), forceReTraining))
 				return false;

@@ -111,6 +111,7 @@ bool NetworkHelper::performRequest(boost::beast::http::request<boost::beast::htt
 bool NetworkHelper::downloadUrl(const std::string &url, std::function<bool(std::vector<uint8_t> &&)> lambda) noexcept
 {
 	auto uri = parseURI(url);
+	std::cout << "Request downloadUrl: " << url;
 
 	http::request<http::string_body> req{http::verb::get, uri.resource, 11};
 
