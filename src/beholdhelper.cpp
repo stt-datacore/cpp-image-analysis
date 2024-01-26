@@ -311,7 +311,7 @@ bool BeholdHelper::ReInitialize(bool forceReTraining, const std::string &jsonpat
 	for (auto &element : j2) {
 		std::string symbol = element.at("ship")["model"].get<std::string>();
 		std::string image = symbol;
-		image = image.replace("model_", "schematics_");
+		image = "schematics_" + image.substr(6);
 
 		std::string url = asseturl + image + ".png";
 		std::cout << "Reading " << symbol << "..." << std::endl;
