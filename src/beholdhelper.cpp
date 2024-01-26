@@ -306,7 +306,7 @@ bool BeholdHelper::ReInitialize(bool forceReTraining, const std::string &jsonpat
 
 	std::ifstream assetStream2(fs::path(jsonpath + "ship_schematics.json").make_preferred().string());
 	nlohmann::json j2;
-	assetStream >> j2;
+	assetStream2 >> j2;
 
 	for (auto &element : j2) {
 		std::string symbol = element.at("ship")["model"].get<std::string>();
