@@ -304,6 +304,25 @@ bool BeholdHelper::ReInitialize(bool forceReTraining, const std::string &jsonpat
 		}
 	}
 
+	std::ifstream assetStream2(fs::path(jsonpath + "ship_schematics.json").make_preferred().string());
+	nlohmann::json j2;
+	assetStream >> j2;
+
+	for (auto &element : j2) {
+		std::string symbol = element.at("ship")["model"].get<std::string>();
+		std::string image = symbol;
+		image = image.replace("model_", "schematics_");
+
+		std::string url = asseturl + image + ".png";
+		std::cout << "Reading " << symbol << "..." << std::endl;
+
+		if (!_trainer.Train(url.c_str(), symbol.c_str(), forceReTraining))
+			return false;
+
+		cv::Mat tr = _trainer.Read(symbol.c_str());
+		_searcher.Add(tr, symbol.c_str());
+	}
+
 	return true;
 }
 
