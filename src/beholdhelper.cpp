@@ -134,8 +134,10 @@ class Searcher
 
 		// group by image index
 		std::map<int, int> occurences;
-		for (const auto &match : matches) {
-			occurences[match.imgIdx]++;
+		for (const auto &match : matches) {		
+			if (_symbols[match.imgIdx] != "behold_title") {
+				occurences[match.imgIdx]++;
+			}
 		}
 
 		auto max = std::max_element(
