@@ -119,13 +119,13 @@ bool NetworkHelper::downloadUrl(const std::string &url, std::function<bool(std::
 	auto uri = parseURI(url);
 	std::cout << "Request downloadUrl: " << url << "\r\n";
 
-	http::request<http::string_body> req{http::verb::get, uri.resource, 11};
+	http::request<http::string_body> req{http::verb::get, uri.resource << "?" << uri.query, 11};
 
 	// Declare a container to hold the response
 	http::response<http::vector_body<uint8_t>> res;
 	std::cout << "Perform Request, URI resource: " << uri.resource << std::endl;
 	std::cout << "Perform Request, raw URI: " << uri.domain.c_str() << std::endl;
-	req.set(boost::beast::http::field::protocol_query, uri.query);
+	
 	if (!performRequest(req, res, uri.domain.c_str()))
 		return false;
 
