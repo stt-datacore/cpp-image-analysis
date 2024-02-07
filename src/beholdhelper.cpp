@@ -367,7 +367,7 @@ SearchResults BeholdHelper::AnalyzeBehold(cv::Mat query, size_t fileSize)
 	results.input_height = query.rows;
 	results.input_width = query.cols;
 
-	std::cout << "Image size is" << query.cols << "x" << query.rows << std::endl;
+	std::cout << "Image size is " << query.cols << "x" << query.rows << std::endl;
 	cv::Mat top = SubMat(query, 0, std::min(query.rows / 13, 80), query.cols / 3, query.cols * 2 / 3);
 	if (top.empty()) {
 		results.error = "Top row was empty";
