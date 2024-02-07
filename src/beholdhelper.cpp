@@ -349,11 +349,14 @@ SearchResults BeholdHelper::AnalyzeBehold(cv::Mat query, size_t fileSize)
 	// Some images are encoded with 2 bytes per channel, scale down for template matching to work
 	if (query.depth() == CV_16U) {
 		// convert to 1-byte
+		std::cout << "Scale down image to 1-byte per channel." << std::endl;
+
 		query.convertTo(query, CV_8U, 0.00390625);
 	}
 
 	// If the image has an alpha channel, remove it
 	if (query.type() == CV_8UC4) {
+		std::cout << "Remove alpha channel." << std::endl;
 		cv::Mat dst;
 		cv::cvtColor(query, dst, cv::COLOR_BGRA2BGR);
 		query = dst;
@@ -364,6 +367,7 @@ SearchResults BeholdHelper::AnalyzeBehold(cv::Mat query, size_t fileSize)
 	results.input_height = query.rows;
 	results.input_width = query.cols;
 
+	std::cout << "Image size is" << query.cols << "x" << query.rows << std::endl;
 	cv::Mat top = SubMat(query, 0, std::min(query.rows / 13, 80), query.cols / 3, query.cols * 2 / 3);
 	if (top.empty()) {
 		results.error = "Top row was empty";
