@@ -74,7 +74,7 @@ bool NetworkHelper::performRequest(boost::beast::http::request<boost::beast::htt
 		// Set some basic fields in the request
 		req.set(boost::beast::http::field::host, host);
 		req.set(boost::beast::http::field::user_agent, BOOST_BEAST_VERSION_STRING);
-
+		std::cout << "Raw Request: " << req << std:endl;
 		// Send the HTTP request to the remote host
 		boost::beast::http::write(stream, req);
 
