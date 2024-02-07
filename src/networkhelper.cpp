@@ -119,7 +119,8 @@ bool NetworkHelper::downloadUrl(const std::string &url, std::function<bool(std::
 	auto uri = parseURI(url);
 	std::cout << "Request downloadUrl: " << url << "\r\n";
 	
-	std::string thisres = uri.resource << "?" << uri.query;
+	std::string thisres;
+	thisres << uri.resource << "?" << uri.query;
 
 	http::request<http::string_body> req{http::verb::get, thisres, 11};
 
