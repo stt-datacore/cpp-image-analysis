@@ -122,6 +122,7 @@ bool NetworkHelper::downloadUrl(const std::string &url, std::function<bool(std::
 
 	// Declare a container to hold the response
 	http::response<http::vector_body<uint8_t>> res;
+	std::cout << "Perform Request, URI resource: " << uri.resource << std::endl;
 	std::cout << "Perform Request, raw URI: " << uri.domain.c_str() << std::endl;
 	
 	if (!performRequest(req, res, uri.domain.c_str()))
