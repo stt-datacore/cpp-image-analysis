@@ -74,6 +74,7 @@ bool NetworkHelper::performRequest(boost::beast::http::request<boost::beast::htt
 		// Set some basic fields in the request
 		req.set(boost::beast::http::field::host, host);
 		req.set(boost::beast::http::field::user_agent, BOOST_BEAST_VERSION_STRING);
+		
 		std::cout << "Raw Request: " << req << std::endl;
 		// Send the HTTP request to the remote host
 		boost::beast::http::write(stream, req);
@@ -124,7 +125,7 @@ bool NetworkHelper::downloadUrl(const std::string &url, std::function<bool(std::
 	http::response<http::vector_body<uint8_t>> res;
 	std::cout << "Perform Request, URI resource: " << uri.resource << std::endl;
 	std::cout << "Perform Request, raw URI: " << uri.domain.c_str() << std::endl;
-	
+	req.set(boost::beast::http::field::body, uri.query);
 	if (!performRequest(req, res, uri.domain.c_str()))
 		return false;
 
