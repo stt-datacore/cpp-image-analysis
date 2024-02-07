@@ -28,16 +28,16 @@ ParsedURI parseURI(const std::string &url)
 	std::smatch match;
 	if (std::regex_match(url, match, PARSE_URL) && match.size() == 9) {
 		result.protocol = value_or(boost::algorithm::to_lower_copy(std::string(match[2])), "http");
-		std::cout << "Protocol: " << result.protocol;
+		std::cout << "Protocol: " << result.protocol << std::endl;
 		result.domain = match[3];
-		std::cout << "Domain: " << result.domain;
+		std::cout << "Domain: " << result.domain << std::endl;
 		const bool is_sequre_protocol = (result.protocol == "https" || result.protocol == "wss");		
 		result.port = value_or(match[5], (is_sequre_protocol) ? "443" : "80");
-		std::cout << "Port: " << result.port;
+		std::cout << "Port: " << result.port << std::endl;
 		result.resource = value_or(match[6], "/");
-		std::cout << "Resource: " << result.resource;
+		std::cout << "Resource: " << result.resource << std::endl;
 		result.query = match[8];
-		std::cout << "Query: " << result.query;
+		std::cout << "Query: " << result.query << std::endl;
 		assert(!result.domain.empty());
 	}
 	return result;
@@ -122,7 +122,8 @@ bool NetworkHelper::downloadUrl(const std::string &url, std::function<bool(std::
 
 	// Declare a container to hold the response
 	http::response<http::vector_body<uint8_t>> res;
-
+	std::cout << "Perform Request, raw URI: " << uri.domain.c_str() << std::endl;
+	
 	if (!performRequest(req, res, uri.domain.c_str()))
 		return false;
 
