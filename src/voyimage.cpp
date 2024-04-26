@@ -123,8 +123,10 @@ int VoyImageScanner::HasStar(cv::Mat skillImg, const std::string &skillName)
 	if (mean.val[0] + mean.val[1] + mean.val[2] < 10) {
 		return 0;
 	} else if (mean.val[0] < 5) {
+		std::cout << "Primary " << mean.val[0] << " " << mean.val[1] << " " << mean.val[2] << "\n";
 		return 1; // Primary
 	} else if (mean.val[0] + mean.val[1] + mean.val[2] > 100) {
+		std::cout << "Secondary " << mean.val[0] << " " << mean.val[1] << " " << mean.val[2] << "\n";
 		return 2; // Secondary
 	} else {
 		// not sure... hmmm
