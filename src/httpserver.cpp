@@ -158,7 +158,8 @@ class http_connection : public std::enable_shared_from_this<http_connection>
 			beast::ostream(response_.body()) << lambda_(std::move(url));
 		} else if (target.find("/api/reinit") == 0)  {
 			response_.set(http::field::content_type, "text/plain");
-			beast::ostream(response_.body()) << "REINITReceived Reinitialize Request OK\r\n";
+			std::string url = "REINIT";
+			beast::ostream(response_.body()) << lambda_(std::move(url));
 		} else {
 			response_.result(http::status::not_found);
 			response_.set(http::field::content_type, "text/plain");
