@@ -156,6 +156,9 @@ class http_connection : public std::enable_shared_from_this<http_connection>
 			response_.set(http::field::content_type, "application/json");
 			std::string url = "BOTH" + UriDecode(target.substr(16));
 			beast::ostream(response_.body()) << lambda_(std::move(url));
+		} else if (target.find("/api/reinit") == 0)  {
+			response_.set(http::field::content_type, "text/plain");
+			beast::ostream(response_.body()) << "Received Reinitialize Request OK\r\n";
 		} else {
 			response_.result(http::status::not_found);
 			response_.set(http::field::content_type, "text/plain");
