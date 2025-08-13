@@ -172,7 +172,7 @@ class http_connection : public std::enable_shared_from_this<http_connection>
 	{
 		auto self = shared_from_this();
 
-		response_.set(http::field::content_length, response_.body().size());
+		response_.set(http::field::content_length, std::to_string(response_.body().size()));
 
 		http::async_write(socket_, response_, [self](beast::error_code ec, std::size_t) {
 			self->socket_.shutdown(tcp::socket::shutdown_send, ec);
