@@ -7,6 +7,7 @@
 #include <vector>
 
 #include <opencv2/opencv.hpp>
+#include <tesseract/baseapi.h>
 
 #include "beholdhelper.h"
 #include "networkhelper.h"
@@ -120,6 +121,22 @@ class Searcher
 		return true;
 	}
 
+	void setHeightMap(nlohmann::json map) {
+		_heightMap = map;
+	}
+
+	std::vector<nlohmann::json> lookupHeight(const char *name) {
+		std::string comp = std::string(name);
+		std::vector<nlohmann::json> results;
+		for (auto &element : _heightMap) {
+			std::string name = element["short_name"].get<std::string>();
+			if (strcmp(name.c_str(), comp.c_str()) == 0) {
+				results.push_back(element);
+			}
+		}
+		return results;
+	}
+
 	MatchResult Match(cv::Mat image)
 	{
 		cv::Mat features = _descriptor.Describe(image);
@@ -134,7 +151,7 @@ class Searcher
 
 		// group by image index
 		std::map<int, int> occurences;
-		for (const auto &match : matches) {		
+		for (const auto &match : matches) {
 			//if (_symbols[match.imgIdx] != "behold_title") {
 				occurences[match.imgIdx]++;
 			//}
@@ -150,6 +167,7 @@ class Searcher
   private:
 	Descriptor _descriptor;
 	cv::Ptr<cv::DescriptorMatcher> _matcher;
+	nlohmann::json _heightMap;
 
 	// Order here must match order of training in matcher (as it deals in indices
 	// only)
@@ -230,6 +248,8 @@ class BeholdHelper : public IBeholdHelper
   private:
 	int CountFullStars(cv::Mat refMat, cv::Mat tplMat, double threshold = 0.8) noexcept;
 
+	std::shared_ptr<tesseract::TessBaseAPI> _tesseract;
+
 	Trainer _trainer;
 	Searcher _searcher;
 	NetworkHelper _networkHelper;
@@ -281,6 +301,17 @@ bool BeholdHelper::ReInitialize(bool forceReTraining, const std::string &jsonpat
 	_beholdTitle = cv::imread(fs::path(_dataPath + "behold_title.png").make_preferred().string());
 
 	_searcher.Clear();
+	_tesseract = std::make_shared<tesseract::TessBaseAPI>();
+
+	if (_tesseract->Init(fs::path(_dataPath + "tessdata").make_preferred().string().c_str(), "Eurostile")) {
+		// "Could not initialize tesseract"
+		return false;
+	}
+
+	//_tesseract->DefaultPageSegMode = PageSegMode.SingleWord;
+
+	// _tesseract->SetVariable("tessedit_char_whitelist", "0123456789");
+	// _tesseract->SetVariable("classify_bln_numeric_mode", "1");
 
 	if (!_trainer.TrainInternal(_beholdTitle, "behold_title", forceReTraining))
 		return false;
@@ -289,6 +320,8 @@ bool BeholdHelper::ReInitialize(bool forceReTraining, const std::string &jsonpat
 	_searcher.Add(tr, "behold_title");
 
 	std::ifstream assetStream(fs::path(jsonpath + "crew.json").make_preferred().string());
+	std::ifstream heightStream(fs::path(_dataPath + "height_info.json").make_preferred().string());
+
 	nlohmann::json j;
 	assetStream >> j;
 
@@ -305,6 +338,10 @@ bool BeholdHelper::ReInitialize(bool forceReTraining, const std::string &jsonpat
 			_searcher.Add(tr, symbol.c_str());
 		}
 	}
+
+	nlohmann::json jh;
+	heightStream >> jh;
+	_searcher.setHeightMap(jh);
 
 	std::ifstream assetStream2(fs::path(jsonpath + "ship_schematics.json").make_preferred().string());
 	nlohmann::json j2;
@@ -432,6 +469,51 @@ SearchResults BeholdHelper::AnalyzeBehold(cv::Mat query, size_t fileSize)
 		// cv::imwrite("name1.png", name1);
 
 		// TODO: OCR
+		_tesseract->SetImage((uchar *)name1.data, name1.size().width, name1.size().height, name1.channels(),
+						 (int)name1.step1());
+		_tesseract->SetSourceResolution(70);
+		_tesseract->Recognize(0);
+		const char *outName1 = _tesseract->GetUTF8Text();
+
+		_tesseract->SetImage((uchar *)name2.data, name2.size().width, name2.size().height, name2.channels(),
+						 (int)name2.step1());
+		_tesseract->SetSourceResolution(70);
+		_tesseract->Recognize(0);
+		const char *outName2 = _tesseract->GetUTF8Text();
+
+		_tesseract->SetImage((uchar *)name3.data, name3.size().width, name3.size().height, name3.channels(),
+						 (int)name3.step1());
+		_tesseract->SetSourceResolution(70);
+		_tesseract->Recognize(0);
+		const char *outName3 = _tesseract->GetUTF8Text();
+
+		try {
+			auto nameInfo1 = _searcher.lookupHeight(outName1);
+			auto nameInfo2 = _searcher.lookupHeight(outName2);
+			auto nameInfo3 = _searcher.lookupHeight(outName3);
+			std::cout << "OCR Results:";
+			for (auto &elem : nameInfo1) {
+				std::cout << elem["name"];
+				if (elem["low"] == true) {
+					std::cout << "Is Short";
+				}
+			}
+			for (auto &elem : nameInfo2) {
+				std::cout << elem["name"];
+				if (elem["low"] == true) {
+					std::cout << "Is Short";
+				}
+			}
+			for (auto &elem : nameInfo3) {
+				std::cout << elem["name"];
+				if (elem["low"] == true) {
+					std::cout << "Is Short";
+				}
+			}
+		}
+		catch(std::exception e) {
+			std::cout << "OCR Failed";
+		}
 	}
 
 	return results;
